@@ -26,8 +26,8 @@ def read_ply(filepath: Path):
     vertices = cloud["vertex"]
     xyz = np.vstack((vertices["x"], vertices["y"], vertices["z"])).T
 
-    dist_axes = np.clip(vertices["scalar_dist_axes"] / 15.0, 0.0, 1.0)
-    z0 = np.clip(vertices["scalar_Z0"] / 30.0, 0.0, 1.0)
+    dist_axes = vertices["scalar_dist_axes"]
+    z0 = vertices["scalar_Z0"]
 
     if not np.all(np.isfinite(dist_axes)) or not np.all(np.isfinite(z0)):
         raise ValueError("Inf values detected in scalar fields.")
