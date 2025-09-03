@@ -306,7 +306,6 @@ class OACNNs(nn.Module):
         self.apply(self._init_weights)
 
     def forward(self, input_dict):
-        print(input_dict.keys())
         discrete_coord = input_dict["grid_coord"]
         feat = input_dict["feat"]
         offset = input_dict["offset"]

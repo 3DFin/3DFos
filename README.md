@@ -26,6 +26,8 @@ Flash attention is only compatible with NVIDIA cards have a compute capability o
 You might need the CUDA compiler, which is part of the CUDA toolkit, in order to compile flash-attn.
 This could be be very time-consuming, particularly on Windows (On Linux, the install script will attempt to download pre-compiled binary wheel from github)
 
+OACNNs could be run on CPU only
+
 ## usage
 
 ```

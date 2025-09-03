@@ -99,12 +99,12 @@ def preprocess(xyz : np.ndarray, z0 : np.ndarray, dist_axes : np.ndarray, grid_s
     return features, remap_ids, sample_ids
 
 
-def run_inference(model, data, remap_ids, original_coord, output_path):
+def run_inference(model, data, remap_ids, original_coord, output_path, device):
     """Perform inference and save predictions as LAS."""
     with torch.inference_mode():
         for key in data:
             if isinstance(data[key], torch.Tensor):
-                data[key] = data[key].cuda(non_blocking=True)
+                data[key] = data[key].to(device, non_blocking=True)
 
         predictions = model(data)
         labels = predictions["seg_logits"][remap_ids].argmax(dim=-1).cpu().numpy()
@@ -126,6 +126,14 @@ def main():
 
     args = parser.parse_args()
 
+    # Check CUDA availability and set device
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+        print(f"Using CUDA: {torch.cuda.get_device_name()}")
+    else:
+        device = torch.device("cpu")
+        print("CUDA not available, using CPU")
+
     start_total = time.time()
 
     start_model = time.time()
@@ -135,10 +143,10 @@ def main():
         model = ptv3_3dfos.seghead.load(name=args.model_path, custom_config=config, backbone="ptv3")
         transform = ptv3_3dfos.transform.transform_config_ptv3()
     else:  # oacnns
-        config = ptv3_3dfos.oacnn_model.model_config()
+        config = ptv3_3dfos.oacnns_model.model_config()
         model = ptv3_3dfos.seghead.load(name=args.model_path, custom_config=config, backbone="oacnns")
         transform = ptv3_3dfos.transform.transform_config_oacnns()
-    model.cuda().eval()
+    model.to(device).eval()
     print(f"Model loaded in {time.time() - start_model:.2f} seconds.")
 
 
@@ -165,7 +173,7 @@ def main():
 
     start_infer = time.time()
     print("Running inference...")
-    run_inference(model, transformed_point, remap_ids, original_coord, args.output_path)
+    run_inference(model, transformed_point, remap_ids, original_coord, args.output_path, device)
     print(f"Inference done in {time.time() - start_infer:.2f} seconds.")
 
     print(f"Total time: {time.time() - start_total:.2f} seconds.")

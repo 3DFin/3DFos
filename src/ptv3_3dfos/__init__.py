@@ -14,7 +14,7 @@
 
 
 from . import ptv3_model
-from . import oacnn_model
+from . import oacnns_model
 from . import module
 from . import structure
 from . import data
@@ -22,4 +22,4 @@ from . import transform
 from . import utils
 from . import registry
 
-__all__ = ["ptv3_model", "oacnn_model", "module", "structure", "transform", "registry", "utils"]
+__all__ = ["ptv3_model", "oacnns_model", "module", "structure", "transform", "registry", "utils"]

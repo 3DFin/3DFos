@@ -24,6 +24,7 @@ cpu = [
     "timm>=1.0.15",
     "torch~=2.8.0",
     "torch-geometric>=2.6.1",
+    "torch-cluster==1.6.3+pt28cpu",
     "torchvision~=0.23.0",
     "spconv>=2.3.8",
 ]
@@ -31,7 +32,7 @@ cu126 = [
     "timm>=1.0.15",
     "torch~=2.8.0",
     "torch-geometric>=2.6.1",
-    "torch-cluster",
+    "torch-cluster==1.6.3+pt28cu126",
     "torchvision~=0.23.0",
     "spconv-cu126>=2.3.8",
 ]
