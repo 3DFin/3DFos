@@ -9,6 +9,7 @@ from plyfile import PlyData
 
 import pgeof
 import ptv3_3dfos
+import ptv3_3dfos.seghead
 from dendroptimized import voxelize
 
 try:
@@ -56,16 +57,18 @@ def normalize_scalar_fields(dist_axes : np.ndarray, z0 : np.ndarray):
     z0 = np.clip(z0 / 30.0, 0.0, 1.0)
     return dist_axes, z0
 
-def preprocess(xyz : np.ndarray, z0 : np.ndarray, dist_axes : np.ndarray, grid_size : float):
+def preprocess(xyz : np.ndarray, z0 : np.ndarray, dist_axes : np.ndarray, grid_size : float, export_grid: bool):
     """Voxelize and compute normals."""
     xyz = xyz.astype(np.float64)
     _, remap_ids, sample_ids = voxelize(
         xyz, grid_size, grid_size, 5, with_n_points=True, verbose=False
     )
 
+
     remap_ids = remap_ids.astype(np.uint32)
 
     xyz_sampled = xyz[sample_ids]
+
     normals = pgeof.compute_features_selected(
         xyz_sampled,
         search_radius=0.5,
@@ -84,6 +87,14 @@ def preprocess(xyz : np.ndarray, z0 : np.ndarray, dist_axes : np.ndarray, grid_s
         "z0": np.expand_dims(z0[sample_ids], axis=1).astype(np.float32),
         "dist_axes": np.expand_dims(dist_axes[sample_ids], axis=1).astype(np.float32),
     }
+
+    # Add grid_coord only for OACNNS backbone
+    if export_grid:
+        scaled_coord = xyz / np.array(grid_size)
+        grid_coord = np.floor(scaled_coord).astype(int)
+        grid_coord -= grid_coord.min(0)
+        grid_coord = grid_coord[sample_ids]
+        features["grid_coord"] = grid_coord
 
     return features, remap_ids, sample_ids
 
@@ -111,20 +122,25 @@ def main():
     parser.add_argument("input_path", type=Path, help="Path to the input PLY file")
     parser.add_argument("--output_path", type=Path, default="seg_result.las", help="Output LAS file path")
     parser.add_argument("--grid_size", type=float, default=0.1, help="Voxel grid size")
+    parser.add_argument("--backbone", type=str, choices=["oacnns", "ptv3"], default="ptv3", help="Choose backbone: oacnns or ptv3")
 
     args = parser.parse_args()
 
     start_total = time.time()
 
     start_model = time.time()
-    config = ptv3_3dfos.model.model_config()
-    config["enable_flash"] = bool(flash_attn)
-
-    model = ptv3_3dfos.model.load(name=args.model_path, custom_config=config)
+    if args.backbone == "ptv3":
+        config = ptv3_3dfos.ptv3_model.model_config()
+        config["enable_flash"] = bool(flash_attn)
+        model = ptv3_3dfos.seghead.load(name=args.model_path, custom_config=config, backbone="ptv3")
+        transform = ptv3_3dfos.transform.transform_config_ptv3()
+    else:  # oacnns
+        config = ptv3_3dfos.oacnn_model.model_config()
+        model = ptv3_3dfos.seghead.load(name=args.model_path, custom_config=config, backbone="oacnns")
+        transform = ptv3_3dfos.transform.transform_config_oacnns()
     model.cuda().eval()
     print(f"Model loaded in {time.time() - start_model:.2f} seconds.")
 
-    transform = ptv3_3dfos.transform.transform_config()
 
     start_data = time.time()
     suffix = args.input_path.suffix.lower()
@@ -143,7 +159,7 @@ def main():
 
     start_preproc = time.time()
     print("Running Preprocessing...")
-    point_features, remap_ids, _ = preprocess(xyz, z0, dist_axes, args.grid_size)
+    point_features, remap_ids, _ = preprocess(xyz, z0, dist_axes, args.grid_size, args.backbone == "oacnns")
     transformed_point = transform(point_features)
     print(f"Preprocessing done in {time.time() - start_preproc:.2f} seconds.")
 

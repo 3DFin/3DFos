@@ -559,7 +559,7 @@ class Embedding(PointModule):
 class PointTransformerV3(PointModule):
     def __init__(
         self,
-        in_channels=6,
+        in_channels=5,
         order=("z", "z-trans"),
         stride=(2, 2, 2, 2),
         enc_depths=(2, 2, 2, 6, 2),
@@ -753,30 +753,6 @@ class PointTransformerV3(PointModule):
         #     )
         return point
 
-
-class SegmentationHead(nn.Module):
-    def __init__(
-        self,
-        num_classes,
-        backbone_out_channels,
-        backbone=None,
-    ):
-        super().__init__()
-        self.seg_head = (
-            nn.Linear(backbone_out_channels, num_classes)
-            if num_classes > 0
-            else nn.Identity()
-        )
-        self.backbone = backbone
-
-    def forward(self, input_dict):
-        point = Point(input_dict)
-        point = self.backbone(point)
-        feat = point.feat
-
-        seg_logits = self.seg_head(feat)
-        return dict(seg_logits=seg_logits)
-
 def model_config():
     # model settings
     return dict(
@@ -811,26 +787,3 @@ def model_config():
         pdnorm_affine=True,
         pdnorm_conditions=("nuScenes", "SemanticKITTI", "Waymo"),
     )
-
-def load(
-    name: str = "3dfos",
-    custom_config: dict = None,
-):
-    import os
-    if os.path.isfile(name):
-        print(f"Loading checkpoint in local path: {name} ...")
-        ckpt_path = name
-    else:
-        raise RuntimeError(f"Model {name} not found")
-
-    from packaging import version
-    if version.parse(torch.__version__) >= version.parse("2.4"):
-        ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
-    else:
-        ckpt = torch.load(ckpt_path, map_location="cpu")
-
-    model = SegmentationHead(num_classes=4, backbone_out_channels=64, backbone=PointTransformerV3(**custom_config))
-    model.load_state_dict(ckpt["state_dict"])
-    n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"Model params: {n_parameters / 1e6:.2f}M")
-    return model
