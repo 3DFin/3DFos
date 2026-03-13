@@ -20,11 +20,12 @@ Please cite our work if the code is helpful to you.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import sys
 import torch.nn as nn
-import spconv.pytorch as spconv
 from collections import OrderedDict
+
+from torchsparse.nn import Conv3d
+from torchsparse.tensor import SparseTensor
 
 from .structure import Point
 
@@ -85,10 +86,10 @@ class PointSequential(PointModule):
             if isinstance(module, PointModule):
                 input = module(input)
             # Spconv module
-            elif spconv.modules.is_spconv_module(module):
+            elif isinstance(module, Conv3d):
                 if isinstance(input, Point):
                     input.sparse_conv_feat = module(input.sparse_conv_feat)
-                    input.feat = input.sparse_conv_feat.features
+                    input.feat = input.sparse_conv_feat.F
                 else:
                     input = module(input)
             # PyTorch module
@@ -96,12 +97,10 @@ class PointSequential(PointModule):
                 if isinstance(input, Point):
                     input.feat = module(input.feat)
                     if "sparse_conv_feat" in input.keys():
-                        input.sparse_conv_feat = input.sparse_conv_feat.replace_feature(
-                            input.feat
-                        )
-                elif isinstance(input, spconv.SparseConvTensor):
+                        input.sparse_conv_feat.F = input.feat
+                elif isinstance(input, SparseTensor):
                     if input.indices.shape[0] != 0:
-                        input = input.replace_feature(module(input.features))
+                        input.sparse_conv_feat.F = input.feat
                 else:
                     input = module(input)
         return input

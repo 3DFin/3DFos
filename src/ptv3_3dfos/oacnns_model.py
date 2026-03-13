@@ -1,7 +1,8 @@
 from functools import partial
 import torch
 import torch.nn as nn
-import spconv.pytorch as spconv
+import torchsparse.nn as nnSparse
+from torchsparse.tensor import SparseTensor
 from timm.models.layers import trunc_normal_
 from .utils import offset2batch
 from torch_geometric.nn.pool import voxel_grid
@@ -64,25 +65,23 @@ class BasicBlock(nn.Module):
             norm_fn(embed_channels),
             nn.ReLU(),
         )
-        self.voxel_block = spconv.SparseSequential(
-            spconv.SubMConv3d(
+        self.voxel_block = nnSparse.Sequential(
+            nnSparse.Conv3d(
                 embed_channels,
                 embed_channels,
                 kernel_size=3,
                 stride=1,
                 padding=1,
-                indice_key=indice_key,
                 bias=bias,
             ),
             norm_fn(embed_channels),
             nn.ReLU(),
-            spconv.SubMConv3d(
+            nnSparse.Conv3d(
                 embed_channels,
                 embed_channels,
                 kernel_size=3,
                 stride=1,
                 padding=1,
-                indice_key=indice_key,
                 bias=bias,
             ),
             norm_fn(embed_channels),
@@ -132,8 +131,8 @@ class DonwBlock(nn.Module):
         self.num_ref = num_ref
         self.depth = depth
         self.point_grid_size = point_grid_size
-        self.down = spconv.SparseSequential(
-            spconv.SparseConv3d(
+        self.down = nnSparse.Sequential(
+            nnSparse.Conv3d(
                 in_channels,
                 embed_channels,
                 kernel_size=2,
@@ -186,8 +185,8 @@ class UpBlock(nn.Module):
     ):
         super().__init__()
         assert depth > 0
-        self.up = spconv.SparseSequential(
-            spconv.SparseInverseConv3d(
+        self.up = nnSparse.Sequential(
+            nnSparse.Conv3d(
                 in_channels,
                 embed_channels,
                 kernel_size=down_ratio,
@@ -237,33 +236,30 @@ class OACNNs(nn.Module):
         self.embed_channels = embed_channels
         norm_fn = partial(nn.BatchNorm1d, eps=1e-3, momentum=0.01)
 
-        self.stem = spconv.SparseSequential(
-            spconv.SubMConv3d(
+        self.stem = nnSparse.Sequential(
+            nnSparse.Conv3d(
                 in_channels,
                 embed_channels,
                 kernel_size=3,
                 padding=1,
-                indice_key="stem",
                 bias=False,
             ),
             norm_fn(embed_channels),
             nn.ReLU(),
-            spconv.SubMConv3d(
+            nnSparse.Conv3d(
                 embed_channels,
                 embed_channels,
                 kernel_size=3,
                 padding=1,
-                indice_key="stem",
                 bias=False,
             ),
             norm_fn(embed_channels),
             nn.ReLU(),
-            spconv.SubMConv3d(
+            nnSparse.Conv3d(
                 embed_channels,
                 embed_channels,
                 kernel_size=3,
                 padding=1,
-                indice_key="stem",
                 bias=False,
             ),
             norm_fn(embed_channels),
@@ -302,7 +298,7 @@ class OACNNs(nn.Module):
                 )
             )
 
-        self.final = spconv.SubMConv3d(dec_channels[0], num_classes, kernel_size=1)
+        self.final = nnSparse.Conv3d(dec_channels[0], num_classes, kernel_size=1)
         self.apply(self._init_weights)
 
     def forward(self, input_dict):
@@ -310,15 +306,11 @@ class OACNNs(nn.Module):
         feat = input_dict["feat"]
         offset = input_dict["offset"]
         batch = offset2batch(offset)
-        x = spconv.SparseConvTensor(
-            features=feat,
-            indices=torch.cat([batch.unsqueeze(-1), discrete_coord], dim=1)
+        x = SparseTensor(
+            feats=feat,
+            coords=torch.cat([batch.unsqueeze(-1), discrete_coord], dim=1)
             .int()
             .contiguous(),
-            spatial_shape=torch.add(
-                torch.max(discrete_coord, dim=0).values, 1
-            ).tolist(),
-            batch_size=batch[-1].tolist() + 1,
         )
 
         x = self.stem(x)
@@ -331,7 +323,7 @@ class OACNNs(nn.Module):
             skip = skips.pop(-1)
             x = self.dec[i](x, skip)
         x = self.final(x)
-        return x.features
+        return x.F
 
     @staticmethod
     def _init_weights(m):
@@ -339,7 +331,7 @@ class OACNNs(nn.Module):
             trunc_normal_(m.weight, std=0.02)
             if m.bias is not None:
                 nn.init.constant_(m.bias, 0)
-        elif isinstance(m, spconv.SubMConv3d):
+        elif isinstance(m, nnSparse.MConv3d):
             trunc_normal_(m.weight, std=0.02)
             if m.bias is not None:
                 nn.init.constant_(m.bias, 0)

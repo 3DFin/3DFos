@@ -56,6 +56,7 @@ def load(
     else:
         ckpt = torch.load(ckpt_path, map_location="cpu")
 
+
     if backbone.lower() == "ptv3":
         model = SegmentationHeadV2(num_classes=4, backbone_out_channels=64, backbone=PointTransformerV3(**custom_config))
     elif backbone.lower() == "oacnns":
@@ -63,7 +64,21 @@ def load(
     else:
         raise ValueError(f"Unknown backbone: {backbone}. Choose 'ptv3' or 'oacnns'")
 
-    model.load_state_dict(ckpt["state_dict"])
+    torchsparse_statedict = {}
+
+    if backbone.lower() == "ptv3":
+        print("ptv3 state dict remapping")
+        for k,v in ckpt["state_dict"].items():
+            if "cpe.0.weight" in k or "conv.weight" in k:
+                v = v.permute(3,2,1,4,0)
+                v = v.reshape(-1, v.shape[3], v.shape[4])
+                k = k.replace("weight", "kernel")
+            torchsparse_statedict[k] = v
+
+        model.load_state_dict(torchsparse_statedict)
+    else:# TODO: we need to create the same remapping for oacnn
+        model.load_state_dict(ckpt["state_dict"])
+
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Model params: {n_parameters / 1e6:.2f}M")
     return model

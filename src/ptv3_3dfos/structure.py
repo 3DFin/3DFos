@@ -21,8 +21,10 @@ Please cite our work if the code is helpful to you.
 
 
 import torch
-import spconv.pytorch as spconv
+
 from addict import Dict
+
+from torchsparse.tensor import SparseTensor
 
 from .serialization import encode
 from .utils import offset2batch, batch2offset
@@ -127,7 +129,7 @@ class Point(Dict):
         Point cloud is sparse, here we use "sparsify" to specifically refer to
         preparing "spconv.SparseConvTensor" for SpConv.
 
-        relay on ["grid_coord" or "coord" + "grid_size", "batch", "feat"]
+        rely on ["grid_coord" or "coord" + "grid_size", "batch", "feat"]
 
         pad: padding sparse for sparse shape.
         """
@@ -141,19 +143,22 @@ class Point(Dict):
             self["grid_coord"] = torch.div(
                 self.coord - self.coord.min(0)[0], self.grid_size, rounding_mode="trunc"
             ).int()
+
         if "sparse_shape" in self.keys():
             sparse_shape = self.sparse_shape
         else:
-            sparse_shape = torch.add(
-                torch.max(self.grid_coord, dim=0).values, pad
+            batch_size=self.batch[-1].tolist() + 1
+            sparse_range = torch.add(
+                torch.max(self.grid_coord, dim=0).values, 0
             ).tolist()
-        sparse_conv_feat = spconv.SparseConvTensor(
-            features=self.feat,
-            indices=torch.cat(
+            sparse_shape = (batch_size, sparse_range[0], sparse_range[1], sparse_range[2])
+
+        sparse_conv_feat = SparseTensor(
+            feats=self.feat,
+            coords=torch.cat(
                 [self.batch.unsqueeze(-1).int(), self.grid_coord.int()], dim=1
             ).contiguous(),
-            spatial_shape=sparse_shape,
-            batch_size=self.batch[-1].tolist() + 1,
+            spatial_range=sparse_shape,
         )
         self["sparse_shape"] = sparse_shape
         self["sparse_conv_feat"] = sparse_conv_feat

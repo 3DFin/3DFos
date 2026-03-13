@@ -11,7 +11,17 @@ import math
 import torch
 import torch.nn as nn
 import torch_geometric
-import spconv.pytorch as spconv
+
+from torchsparse.nn import Conv3d
+from torchsparse.nn import functional as F
+
+# to change the dataflow
+# Do not use ifSort if not sorted...
+config = F.conv_config.get_default_conv_config()
+config.dataflow = F.Dataflow.ImplicitGEMM
+F.conv_config.set_global_conv_config(config)
+
+
 from timm.layers import DropPath
 
 try:
@@ -316,12 +326,11 @@ class Block(PointModule):
         self.pre_norm = pre_norm
 
         self.cpe = PointSequential(
-            spconv.SubMConv3d(
+            Conv3d(
                 channels,
                 channels,
                 kernel_size=3,
                 bias=True,
-                indice_key=cpe_indice_key,
             ),
             nn.Linear(channels, channels),
             norm_layer(channels),
@@ -375,7 +384,7 @@ class Block(PointModule):
         point.feat = shortcut + point.feat
         if not self.pre_norm:
             point = self.norm2(point)
-        point.sparse_conv_feat = point.sparse_conv_feat.replace_feature(point.feat)
+        point.sparse_conv_feat.F = point.feat
         return point
 
 
@@ -535,15 +544,13 @@ class Embedding(PointModule):
         self.in_channels = in_channels
         self.embed_channels = embed_channels
 
-        # TODO: check remove spconv
         self.stem = PointSequential(
-            conv=spconv.SubMConv3d(
+            conv=Conv3d(
                 in_channels,
                 embed_channels,
                 kernel_size=5,
                 padding=1,
                 bias=False,
-                indice_key="stem",
             )
         )
         if norm_layer is not None:
