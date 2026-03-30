@@ -18,7 +18,6 @@ except ImportError:
     print("no flash attn")
     flash_attn = None
 
-
 def read_ply(filepath: Path):
     """Read a PLY file and extract point cloud and scalar attributes."""
     with open(filepath, "rb") as f:
@@ -57,13 +56,15 @@ def normalize_scalar_fields(dist_axes : np.ndarray, z0 : np.ndarray):
     z0 = np.clip(z0 / 30.0, 0.0, 1.0)
     return dist_axes, z0
 
-def preprocess(xyz : np.ndarray, z0 : np.ndarray, dist_axes : np.ndarray, grid_size : float, export_grid: bool):
+def preprocess(xyz : np.ndarray, z0 : np.ndarray, dist_axes : np.ndarray, grid_size : float):
     """Voxelize and compute normals."""
     xyz = xyz.astype(np.float64)
-    _, remap_ids, sample_ids = voxelize(
-        xyz, grid_size, grid_size, 5, with_n_points=True, verbose=False
+    voxelated_cloud, remap_ids, sample_ids = voxelize(
+        xyz, grid_size, grid_size, 5, with_n_points=False, verbose=False
     )
 
+    # resample the data according to the voxelization
+    grid_coords = np.floor((voxelated_cloud - np.min(xyz, axis=0)) / grid_size).astype(np.int_)
 
     remap_ids = remap_ids.astype(np.uint32)
 
@@ -82,19 +83,14 @@ def preprocess(xyz : np.ndarray, z0 : np.ndarray, dist_axes : np.ndarray, grid_s
 
     features = {
         "grid_size": grid_size,
-        "coord": xyz_sampled.astype(np.float32),
+        "coord": voxelated_cloud.astype(np.float32),
         "normal": normals.astype(np.float32),
         "z0": np.expand_dims(z0[sample_ids], axis=1).astype(np.float32),
         "dist_axes": np.expand_dims(dist_axes[sample_ids], axis=1).astype(np.float32),
     }
 
-    # Add grid_coord only for OACNNS backbone
-    if export_grid:
-        scaled_coord = xyz / np.array(grid_size)
-        grid_coord = np.floor(scaled_coord).astype(int)
-        grid_coord -= grid_coord.min(0)
-        grid_coord = grid_coord[sample_ids]
-        features["grid_coord"] = grid_coord
+
+    features["grid_coord"] = grid_coords
 
     return features, remap_ids, sample_ids
 
@@ -137,15 +133,14 @@ def main():
     start_total = time.time()
 
     start_model = time.time()
+    transform = ptv3_3dfos.transform.transform_config()
     if args.backbone == "ptv3":
         config = ptv3_3dfos.ptv3_model.model_config()
         config["enable_flash"] = bool(flash_attn)
         model = ptv3_3dfos.seghead.load(name=args.model_path, custom_config=config, backbone="ptv3")
-        transform = ptv3_3dfos.transform.transform_config_ptv3()
     else:  # oacnns
         config = ptv3_3dfos.oacnns_model.model_config()
         model = ptv3_3dfos.seghead.load(name=args.model_path, custom_config=config, backbone="oacnns")
-        transform = ptv3_3dfos.transform.transform_config_oacnns()
     model.to(device).eval()
     print(f"Model loaded in {time.time() - start_model:.2f} seconds.")
 
@@ -167,7 +162,7 @@ def main():
 
     start_preproc = time.time()
     print("Running Preprocessing...")
-    point_features, remap_ids, _ = preprocess(xyz, z0, dist_axes, args.grid_size, args.backbone == "oacnns")
+    point_features, remap_ids, _ = preprocess(xyz, z0, dist_axes, args.grid_size)
     transformed_point = transform(point_features)
     print(f"Preprocessing done in {time.time() - start_preproc:.2f} seconds.")
 

@@ -1137,18 +1137,7 @@ class Compose(object):
             data_dict = t(data_dict)
         return data_dict
 
-def transform_config_ptv3():
-    config = [
-        dict(type="ToTensor"),
-        dict(
-            type="Collect",
-            keys=("coord", "grid_size"),
-            feat_keys=("normal", "z0", "dist_axes"),
-        ),
-    ]
-    return Compose(config)
-
-def transform_config_oacnns():
+def transform_config():
     config = [
         dict(type="ToTensor"),
         dict(

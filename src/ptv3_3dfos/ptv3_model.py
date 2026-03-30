@@ -4,6 +4,7 @@ Point Transformer - V3 Mode1
 Author: Xiaoyang Wu (xiaoyang.wu.cs@gmail.com)
 Please cite our work if the code is helpful to you.
 """
+import select
 
 from functools import partial
 from addict import Dict
@@ -15,10 +16,15 @@ import torch_geometric
 from torchsparse.nn import Conv3d
 from torchsparse.nn import functional as F
 
-# to change the dataflow
-# Do not use ifSort if not sorted...
+import time
+
+# We change the dataflow for CPU as it's ne only available solution
 config = F.conv_config.get_default_conv_config()
-config.dataflow = F.Dataflow.ImplicitGEMM
+if not torch.cuda.is_available():
+    config.dataflow = F.Dataflow.GatherScatter
+    config.kmap_mode = "hashmap"
+else:
+    config.ifsort = False;
 F.conv_config.set_global_conv_config(config)
 
 
@@ -26,6 +32,7 @@ from timm.layers import DropPath
 
 try:
     import flash_attn
+    flash_attn = None
 except ImportError:
     flash_attn = None
 
@@ -220,6 +227,50 @@ class SerializedAttention(PointModule):
             )
         return point[pad_key], point[unpad_key], point[cu_seqlens_key]
 
+    def attention_chunked_exact(self, q, k, v, scale, chunk_size=32): # q, k, v:
+        N, H, K, C = q.shape
+
+        device = q.device
+        dtype = q.dtype
+
+        max = torch.full((N, H, K), -torch.inf, device=device, dtype=dtype)
+        l = torch.zeros((N, H, K), device=device, dtype=dtype)             # sum exp
+        attn = torch.zeros((N, H, K, C), device=device, dtype=dtype)
+
+        for start in range(0, K, chunk_size):
+            end = min(start + chunk_size, K)
+
+            k_chunk = k[:, :, start:end]          # (N,H,chunk,C)
+            v_chunk = v[:, :, start:end]
+
+            # (N,H,K ,chunk)
+            scores = torch.matmul(q * scale, k_chunk.transpose(-2, -1))
+
+            # new max
+            curr_max = torch.maximum(max, scores.max(dim=-1).values)
+
+            # rescale previous values
+            exp_max_diff = torch.exp(max - curr_max)
+            l = l * exp_max_diff
+            attn = attn * exp_max_diff.unsqueeze(-1)
+
+            # scores (exp)
+            exp_scores = torch.exp(scores - curr_max.unsqueeze(-1))
+
+            # Update sum of scores
+            l = l + exp_scores.sum(dim=-1)
+
+            # update output
+            attn = attn + torch.matmul(exp_scores, v_chunk)
+
+            # update max
+            max = curr_max
+
+        # normalize
+        attn = attn / l.unsqueeze(-1)
+
+        return attn
+
     def forward(self, point):
         if not self.enable_flash:
             self.patch_size = min(
@@ -239,22 +290,18 @@ class SerializedAttention(PointModule):
         qkv = self.qkv(point.feat)[order]
 
         if not self.enable_flash:
-            # encode and reshape qkv: (N', K, 3, H, C') => (3, N', H, K, C')
-            q, k, v = (
-                qkv.reshape(-1, K, 3, H, C // H).permute(2, 0, 3, 1, 4).unbind(dim=0)
-            )
-            # attn
-            if self.upcast_attention:
-                q = q.float()
-                k = k.float()
-            attn = (q * self.scale) @ k.transpose(-2, -1)  # (N', H, K, K)
-            if self.enable_rpe:
-                attn = attn + self.rpe(self.get_rel_pos(point, order))
-            if self.upcast_softmax:
-                attn = attn.float()
-            attn = self.softmax(attn)
-            attn = self.attn_drop(attn).to(qkv.dtype)
-            feat = (attn @ v).transpose(1, 2).reshape(-1, C)
+            start = time.time()
+            # compute qkv and reshape once
+            qkv = self.qkv(point.feat)[order]
+            qkv = qkv.view(-1, K, 3, H, C // H)
+
+            q = qkv[:, :, 0].transpose(1, 2)
+            k = qkv[:, :, 1].transpose(1, 2)
+            v = qkv[:, :, 2].transpose(1, 2)
+
+            feat = self.attention_chunked_exact(q,k, v,self.scale, chunk_size=16)
+            feat = feat.transpose(1, 2).reshape(-1,C)
+            end = time.time()
         else:
             feat = flash_attn.flash_attn_varlen_qkvpacked_func(
                 qkv.half().reshape(-1, 3, H, C // H),
@@ -330,6 +377,7 @@ class Block(PointModule):
                 channels,
                 channels,
                 kernel_size=3,
+                stride=1,
                 bias=True,
             ),
             nn.Linear(channels, channels),

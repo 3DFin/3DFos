@@ -67,10 +67,11 @@ class Point(Dict):
         """
         Point Cloud Serialization
 
-        relay on ["grid_coord" or "coord" + "grid_size", "batch", "feat"]
+        rely on ["grid_coord" or "coord" + "grid_size", "batch", "feat"]
         """
         self["order"] = order
         assert "batch" in self.keys()
+
         if "grid_coord" not in self.keys():
             # if you don't want to operate GridSampling in data augmentation,
             # please add the following augmentation into your pipeline:
@@ -81,7 +82,6 @@ class Point(Dict):
             self["grid_coord"] = torch.div(
                 self.coord - self.coord.min(0)[0], self.grid_size, rounding_mode="trunc"
             ).int()
-
         if depth is None:
             # Adaptive measure the depth of serialization cube (length = 2 ^ depth)
             depth = int(self.grid_coord.max() + 1).bit_length()
