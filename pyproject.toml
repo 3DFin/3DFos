@@ -25,14 +25,12 @@ cpu = [
     "torch~=2.10.0",
     "torch-geometric>=2.6.1",
     "torchvision~=0.25.0",
-    "spconv>=2.3.8",
 ]
 cu130 = [
     "timm>=1.0.15",
     "torch~=2.10.0",
     "torch-geometric>=2.6.1",
     "torchvision~=0.25.0",
-    #"spconv-cu126>=2.3.8",
 ]
 
 [tool.uv]

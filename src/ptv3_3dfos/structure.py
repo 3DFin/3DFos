@@ -50,9 +50,9 @@ class Point(Dict):
     - "serialized_code": a list of serialization codes;
     - "serialized_order": a list of serialization order determined by code;
     - "serialized_inverse": a list of inverse mapping determined by code;
-    (related to Sparsify: SpConv)
+    (related to Sparsify)
     - "sparse_shape": Sparse shape for Sparse Conv Tensor;
-    - "sparse_conv_feat": SparseConvTensor init with information provide by Point;
+    - "sparse_conv_feat": TorchSparse++ init with information provide by Point;
     """
 
     def __init__(self, *args, **kwargs):
@@ -122,7 +122,7 @@ class Point(Dict):
         self["serialized_order"] = order
         self["serialized_inverse"] = inverse
 
-    def sparsify(self, pad=96):
+    def sparsify(self):
         """
         Point Cloud Serialization
 
@@ -130,8 +130,6 @@ class Point(Dict):
         preparing "spconv.SparseConvTensor" for SpConv.
 
         rely on ["grid_coord" or "coord" + "grid_size", "batch", "feat"]
-
-        pad: padding sparse for sparse shape.
         """
         assert {"feat", "batch"}.issubset(self.keys())
         if "grid_coord" not in self.keys():

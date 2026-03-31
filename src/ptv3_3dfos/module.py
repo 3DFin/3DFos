@@ -81,11 +81,11 @@ class PointSequential(PointModule):
         self.add_module(name, module)
 
     def forward(self, input):
-        for k, module in self._modules.items():
+        for _, module in self._modules.items():
             # Point module
             if isinstance(module, PointModule):
                 input = module(input)
-            # Spconv module
+            # Torchsparse++ module
             elif isinstance(module, Conv3d):
                 if isinstance(input, Point):
                     input.sparse_conv_feat = module(input.sparse_conv_feat)

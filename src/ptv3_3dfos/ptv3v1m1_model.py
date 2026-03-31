@@ -299,7 +299,7 @@ class SerializedAttention(PointModule):
             k = qkv[:, :, 1].transpose(1, 2)
             v = qkv[:, :, 2].transpose(1, 2)
 
-            feat = self.attention_chunked_exact(q,k, v,self.scale, chunk_size=16)
+            feat = self.attention_chunked_exact(q,k, v,self.scale, chunk_size=128)
             feat = feat.transpose(1, 2).reshape(-1,C)
             end = time.time()
         else:
