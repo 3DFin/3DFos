@@ -27,6 +27,57 @@ import spconv.pytorch as spconv
 from collections import OrderedDict
 
 from .structure import Point
+from typing import Optional
+
+
+import spconv.pytorch as spconv
+
+
+class CPUSubMConv3d(spconv.conv.SparseConvolution):
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 kernel_size,
+                 stride=1,
+                 padding=0,
+                 dilation=1,
+                 groups=1,
+                 bias=True,
+                 indice_key=None,
+                 algo: Optional[spconv.ConvAlgo] = None,
+                 fp32_accum: Optional[bool] = None,
+                 large_kernel_fast_algo: bool = False,
+                 name=None):
+        super(CPUSubMConv3d,
+              self).__init__(3,
+                             in_channels,
+                             out_channels,
+                             kernel_size,
+                             stride,
+                             padding,
+                             dilation,
+                             groups,
+                             True, #bias
+                             True,
+                             indice_key=indice_key,
+                             algo=algo,
+                             fp32_accum=fp32_accum,
+                             large_kernel_fast_algo=large_kernel_fast_algo,
+                             name=name)
+    def forward(self,
+                input: spconv.SparseConvTensor,
+                add_input: Optional[spconv.SparseConvTensor] = None):
+            output = self._conv_forward(self.training,
+                                                        input,
+                                                        self.weight,
+                                                        None,
+                                                        add_input,
+                                                        name=self.name,
+                                                        sparse_unique_name=self._sparse_unique_name,
+                                                        act_type=self.act_type,
+                                                        act_alpha=self.act_alpha,
+                                                        act_beta=self.act_beta)
+            return output + self.bias
 
 
 class PointModule(nn.Module):

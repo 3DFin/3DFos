@@ -13,6 +13,7 @@ import torch.nn as nn
 import torch_geometric
 import spconv.pytorch as spconv
 from timm.layers import DropPath
+from .module import CPUSubMConv3d
 
 try:
     import flash_attn
@@ -316,7 +317,7 @@ class Block(PointModule):
         self.pre_norm = pre_norm
 
         self.cpe = PointSequential(
-            spconv.SubMConv3d(
+            CPUSubMConv3d(
                 channels,
                 channels,
                 kernel_size=3,
