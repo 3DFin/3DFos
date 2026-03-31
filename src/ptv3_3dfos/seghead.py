@@ -27,16 +27,6 @@ class SegmentationHeadV2(nn.Module):
         return dict(seg_logits=seg_logits)
 
 
-class SegmentationHeadV1(nn.Module):
-    def __init__(self, backbone=None):
-        super().__init__()
-        self.backbone = backbone
-
-    def forward(self, input_dict):
-        seg_logits = self.backbone(input_dict)
-        return dict(seg_logits=seg_logits)
-
-
 def load(
     name: str = "3dfos",
     custom_config: dict = None,

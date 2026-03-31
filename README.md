@@ -40,3 +40,5 @@ The point Cloud could be in las/laz or ply format.
 ## TODO:
 - Handle global shift for las clouds
 - Retest CPU only scenario and find what is wrong with spconv. spconv is not even compiled for CPU on windows.
+- Citation section with PTV3/PointCept references (and sonata?)
+- Where to put the weights ?
