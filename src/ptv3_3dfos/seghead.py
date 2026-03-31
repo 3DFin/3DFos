@@ -1,8 +1,7 @@
 import torch
 import torch.nn as nn
 from .structure import Point
-from .oacnns_model import OACNNs
-from .ptv3_model import PointTransformerV3
+from .ptv3v1m1_model import PointTransformerV3
 
 class SegmentationHeadV2(nn.Module):
     def __init__(
@@ -41,7 +40,7 @@ class SegmentationHeadV1(nn.Module):
 def load(
     name: str = "3dfos",
     custom_config: dict = None,
-    backbone: str = "oacnns",
+    backbone: str = "ptv3",
 ):
     import os
     if os.path.isfile(name):
@@ -59,24 +58,24 @@ def load(
 
     if backbone.lower() == "ptv3":
         model = SegmentationHeadV2(num_classes=4, backbone_out_channels=64, backbone=PointTransformerV3(**custom_config))
-    elif backbone.lower() == "oacnns":
-        model = SegmentationHeadV1(backbone=OACNNs(**custom_config))
     else:
-        raise ValueError(f"Unknown backbone: {backbone}. Choose 'ptv3' or 'oacnns'")
+        raise ValueError(f"Unknown backbone: {backbone}. Choose 'ptv3'")
 
     torchsparse_statedict = {}
 
+    # Ptv3 state dict remapping for torchsparse++.
+    # Weights have different names and and shape
+    # Bias is ok
     if backbone.lower() == "ptv3":
-        print("ptv3 state dict remapping")
+        print("ptv3 state dict remapping for torchsparse++")
         for k,v in ckpt["state_dict"].items():
             if "cpe.0.weight" in k or "conv.weight" in k:
                 v = v.permute(3,2,1,4,0)
                 v = v.reshape(-1, v.shape[3], v.shape[4])
                 k = k.replace("weight", "kernel")
             torchsparse_statedict[k] = v
-
         model.load_state_dict(torchsparse_statedict)
-    else:# TODO: we need to create the same remapping for oacnn
+    else:
         model.load_state_dict(ckpt["state_dict"])
 
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)

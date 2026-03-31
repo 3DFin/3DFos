@@ -1,12 +1,14 @@
 # PTV3-3DFos
 
-Minimal PTV3/OACNNs standalone inspired by [sonata](https://github.com/facebookresearch/sonata) standalone.
+Minimal PTV3 standalone inspired by [sonata](https://github.com/facebookresearch/sonata) standalone.
 
 ## Changes:
 - Added as clean as possible uv packaging
-- Removed torch_scatter dependencies (replaced by pure torch one from PYG).
-- ... but introduce torch_cluster dependency for OACNNs
-- Changed sonata model for original PTV3 / OACNNs
+- Removed torch_scatter dependencies (replaced scatter one from PYG by pure torch calls, simplify dependencies).
+- Replaced spconv by torchsparse++ for sparse convolution. 
+  Torchsparse++ memory overhead should be higher than spconv on GPU but he his not affected by CUMM bugs (like https://github.com/FindDefinition/cumm/issues/26) and is easier
+  to package / maintain
+- Added a chunked attention implementation to allow "low" memory attention even when flash attention is missing (at the cost of a higher runtime)  
 - Added a dedicated inference demo/script for 3DFos datasets
 
 ## Installation:
@@ -26,12 +28,10 @@ Flash attention is only compatible with NVIDIA cards have a compute capability o
 You might need the CUDA compiler, which is part of the CUDA toolkit, in order to compile flash-attn.
 This could be be very time-consuming, particularly on Windows (On Linux, the install script will attempt to download pre-compiled binary wheel from github)
 
-OACNNs could be run on CPU only
-
 ## usage
 
 ```
-uv run 3DFos <path_to_the_model.pth> <path_to_the_cloud.las|ply> [--grid_size 0.05] [--backbone ptv3|oacnns]
+uv run 3DFos <path_to_the_model.pth> <path_to_the_cloud.las|ply> [--grid_size 0.05] [--backbone ptv3]
 ```
 
 The point Cloud could be in las/laz or ply format.

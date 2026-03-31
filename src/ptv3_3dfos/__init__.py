@@ -13,8 +13,7 @@
 # limitations under the License.
 
 
-from . import ptv3_model
-from . import oacnns_model
+from . import ptv3v1m1_model
 from . import module
 from . import structure
 from . import data
@@ -22,4 +21,4 @@ from . import transform
 from . import utils
 from . import registry
 
-__all__ = ["ptv3_model", "oacnns_model", "module", "structure", "transform", "registry", "utils"]
+__all__ = ["ptv3m1_model", "module", "structure", "transform", "registry", "utils"]

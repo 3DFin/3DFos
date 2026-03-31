@@ -118,7 +118,7 @@ def main():
     parser.add_argument("input_path", type=Path, help="Path to the input PLY file")
     parser.add_argument("--output_path", type=Path, default="seg_result.las", help="Output LAS file path")
     parser.add_argument("--grid_size", type=float, default=0.1, help="Voxel grid size")
-    parser.add_argument("--backbone", type=str, choices=["oacnns", "ptv3"], default="ptv3", help="Choose backbone: oacnns or ptv3")
+    parser.add_argument("--backbone", type=str, choices=["ptv3"], default="ptv3", help="Choose backbone: ptv3 only for now")
 
     args = parser.parse_args()
 
@@ -135,12 +135,12 @@ def main():
     start_model = time.time()
     transform = ptv3_3dfos.transform.transform_config()
     if args.backbone == "ptv3":
-        config = ptv3_3dfos.ptv3_model.model_config()
+        config = ptv3_3dfos.ptv3v1m1_model.model_config()
         config["enable_flash"] = bool(flash_attn)
         model = ptv3_3dfos.seghead.load(name=args.model_path, custom_config=config, backbone="ptv3")
-    else:  # oacnns
-        config = ptv3_3dfos.oacnns_model.model_config()
-        model = ptv3_3dfos.seghead.load(name=args.model_path, custom_config=config, backbone="oacnns")
+    else:
+        print(f"{args.backbone} backbone is unknown")
+        exit(1)
     model.to(device).eval()
     print(f"Model loaded in {time.time() - start_model:.2f} seconds.")
 

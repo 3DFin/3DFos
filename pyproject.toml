@@ -5,7 +5,7 @@ build-backend = "uv_build"
 [project]
 name = "PTV3-3DFos"
 version = "0.1.0"
-description = "Add your description here"
+description = "Forestry standalone inference "
 requires-python = ">=3.13.0,<3.14.0"
 readme = "README.md"
 
@@ -24,7 +24,6 @@ cpu = [
     "timm>=1.0.15",
     "torch~=2.10.0",
     "torch-geometric>=2.6.1",
-    "torch-cluster==1.6.3+pt210cpu",
     "torchvision~=0.25.0",
     "spconv>=2.3.8",
 ]
@@ -32,7 +31,6 @@ cu130 = [
     "timm>=1.0.15",
     "torch~=2.10.0",
     "torch-geometric>=2.6.1",
-    "torch-cluster==1.6.3+pt210cu130",
     "torchvision~=0.25.0",
     #"spconv-cu126>=2.3.8",
 ]
@@ -41,10 +39,6 @@ cu130 = [
 no-build-isolation-package = ["flash-attn"]
 conflicts = [[{ extra = "cpu" }, { extra = "cu130" }]]
 concurrent-installs=8
-find-links = [
-    "https://data.pyg.org/whl/torch-2.10.0+cpu.html",
-    "https://data.pyg.org/whl/torch-2.10.0+cu130.html",
-]
 
 [[tool.uv.dependency-metadata]]
 requires-dist = ["torch", "setuptools", "einops"]
