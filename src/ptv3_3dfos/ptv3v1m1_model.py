@@ -4,26 +4,28 @@ Point Transformer - V3 Mode1
 Author: Xiaoyang Wu (xiaoyang.wu.cs@gmail.com)
 Please cite our work if the code is helpful to you.
 """
-import select
+
+import math
 
 from functools import partial
-from addict import Dict
-import math
+
 import torch
 import torch.nn as nn
 import torch_geometric
-
+from addict import Dict
+from torch.nn.attention import SDPBackend, sdpa_kernel
+from torch.nn.functional import scaled_dot_product_attention
 from torchsparse.nn import Conv3d
 from torchsparse.nn import functional as F
 
-import time
 
-# We change the dataflow for CPU as it's ne only available solution
+#In torchsparse, we change the dataflow for CPU as it's ne only available solution
 config = F.conv_config.get_default_conv_config()
 if not torch.cuda.is_available():
     config.dataflow = F.Dataflow.GatherScatter
     config.kmap_mode = "hashmap"
 else:
+    config.kmap_mode = "hashmap"
     config.ifsort = False;
 F.conv_config.set_global_conv_config(config)
 
@@ -32,15 +34,17 @@ from timm.layers import DropPath
 
 try:
     import flash_attn
+
     flash_attn = None
 except ImportError:
     flash_attn = None
 
-from .utils import offset2bincount
-from .structure import Point
-from .module import PointModule, PointSequential
-
 import torch.nn as nn
+
+from .module import PointModule, PointSequential
+from .structure import Point
+from .utils import offset2bincount
+
 
 class PDNorm(PointModule):
     def __init__(
@@ -133,15 +137,15 @@ class SerializedAttention(PointModule):
         self.enable_rpe = enable_rpe
         self.enable_flash = enable_flash
         if enable_flash:
-            assert (
-                enable_rpe is False
-            ), "Set enable_rpe to False when enable Flash Attention"
-            assert (
-                upcast_attention is False
-            ), "Set upcast_attention to False when enable Flash Attention"
-            assert (
-                upcast_softmax is False
-            ), "Set upcast_softmax to False when enable Flash Attention"
+            assert enable_rpe is False, (
+                "Set enable_rpe to False when enable Flash Attention"
+            )
+            assert upcast_attention is False, (
+                "Set upcast_attention to False when enable Flash Attention"
+            )
+            assert upcast_softmax is False, (
+                "Set upcast_softmax to False when enable Flash Attention"
+            )
             assert flash_attn is not None, "Make sure flash_attn is installed."
             self.patch_size = patch_size
             self.attn_drop = attn_drop
@@ -227,50 +231,6 @@ class SerializedAttention(PointModule):
             )
         return point[pad_key], point[unpad_key], point[cu_seqlens_key]
 
-    def attention_chunked_exact(self, q, k, v, scale, chunk_size=32): # q, k, v:
-        N, H, K, C = q.shape
-
-        device = q.device
-        dtype = q.dtype
-
-        max = torch.full((N, H, K), -torch.inf, device=device, dtype=dtype)
-        l = torch.zeros((N, H, K), device=device, dtype=dtype)             # sum exp
-        attn = torch.zeros((N, H, K, C), device=device, dtype=dtype)
-
-        for start in range(0, K, chunk_size):
-            end = min(start + chunk_size, K)
-
-            k_chunk = k[:, :, start:end]          # (N,H,chunk,C)
-            v_chunk = v[:, :, start:end]
-
-            # (N,H,K ,chunk)
-            scores = torch.matmul(q * scale, k_chunk.transpose(-2, -1))
-
-            # new max
-            curr_max = torch.maximum(max, scores.max(dim=-1).values)
-
-            # rescale previous values
-            exp_max_diff = torch.exp(max - curr_max)
-            l = l * exp_max_diff
-            attn = attn * exp_max_diff.unsqueeze(-1)
-
-            # scores (exp)
-            exp_scores = torch.exp(scores - curr_max.unsqueeze(-1))
-
-            # Update sum of scores
-            l = l + exp_scores.sum(dim=-1)
-
-            # update output
-            attn = attn + torch.matmul(exp_scores, v_chunk)
-
-            # update max
-            max = curr_max
-
-        # normalize
-        attn = attn / l.unsqueeze(-1)
-
-        return attn
-
     def forward(self, point):
         if not self.enable_flash:
             self.patch_size = min(
@@ -290,20 +250,15 @@ class SerializedAttention(PointModule):
         qkv = self.qkv(point.feat)[order]
 
         if not self.enable_flash:
-            start = time.time()
-            # compute qkv and reshape once
-            qkv = self.qkv(point.feat)[order]
+            # compute qkv
             qkv = qkv.view(-1, K, 3, H, C // H)
-
             q = qkv[:, :, 0].transpose(1, 2)
             k = qkv[:, :, 1].transpose(1, 2)
             v = qkv[:, :, 2].transpose(1, 2)
-
-            feat = self.attention_chunked_exact(q,k, v,self.scale, chunk_size=128)
-            feat = feat.transpose(1, 2).reshape(-1,C)
-            end = time.time()
+            feat = scaled_dot_product_attention(q, k, v,scale=self.scale)
+            feat = feat.transpose(1, 2).reshape(-1, C)
         else:
-            feat = flash_attn.flash_attn_varlen_qkvpacked_func(
+            feat = flash_attn.flash_attn_varlen_qkvpacked_fun(
                 qkv.half().reshape(-1, 3, H, C // H),
                 cu_seqlens,
                 max_seqlen=self.patch_size,
@@ -475,9 +430,9 @@ class SerializedPooling(PointModule):
             "serialized_order",
             "serialized_inverse",
             "serialized_depth",
-        }.issubset(
-            point.keys()
-        ), "Run point.serialization() point cloud before SerializedPooling"
+        }.issubset(point.keys()), (
+            "Run point.serialization() point cloud before SerializedPooling"
+        )
 
         code = point.serialized_code >> pooling_depth * 3
         code_, cluster, counts = torch.unique(
@@ -807,6 +762,7 @@ class PointTransformerV3(PointModule):
         #         reduce="mean",
         #     )
         return point
+
 
 def model_config():
     # model settings
