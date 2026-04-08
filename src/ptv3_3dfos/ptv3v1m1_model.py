@@ -25,7 +25,6 @@ if not torch.cuda.is_available():
     config.dataflow = F.Dataflow.GatherScatter
     config.kmap_mode = "hashmap"
 else:
-    config.kmap_mode = "hashmap"
     config.ifsort = False;
 F.conv_config.set_global_conv_config(config)
 
