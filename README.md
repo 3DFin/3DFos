@@ -6,8 +6,7 @@ Minimal PTV3 standalone inspired by [sonata](https://github.com/facebookresearch
 
 - Added clean uv packaging
 - Removed torch_scatter dependencies (replaced scatter one from PYG by pure torch calls, simplify dependencies).
-- [WIP] Replaced spconv by torchsparse++ for sparse convolution.
-  Torchsparse++ has higher memory overhead than spconv on GPU, but it is not affected by CUMM bugs (like https://github.com/FindDefinition/cumm/issues/26) and is easier
+- [WIP] Replaced spconv by torchsparse++ / nanoTS for sparse convolution. nanoTS is not affected by CUMM bugs (like https://github.com/FindDefinition/cumm/issues/26) and is easier
   to package / maintain
 - Use toch built-in SDPA to levrage efficient and memory friendly attention kernels
 - Added a dedicated inference demo/script for 3DFos datasets
@@ -21,14 +20,14 @@ uv sync --extra cu126
 then
 
 ```
-uv sync --extra cu126 --extra torchsparse
+uv sync --extra cu130 --extra nanots
 ```
 
 Flash attention lowers memory usage and improves runtime, but it's not mandatory.
 if you want flash-attn, you have to run this command **AFTER** the first one.
 
 ```
-uv sync --extra cu126 --extra torchsparse --extra flash-attn
+uv sync --extra cu130 --extra nanots --extra flash-attn
 ```
 
 Flash attention is only compatible with NVIDIA cards that have a compute capability of 8.0+.

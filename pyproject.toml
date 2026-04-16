@@ -20,7 +20,7 @@ dependencies = [
 
 [project.optional-dependencies]
 flash-attn = ["flash-attn==2.8.3"]
-torchsparse = ["torchsparse"]
+nanots = ["nanots>=2.2.0"]
 cpu = [
     "timm>=1.0.15",
     "torch~=2.11.0",
@@ -35,11 +35,11 @@ cu130 = [
 ]
 
 [tool.uv]
-no-build-isolation-package = ["flash-attn", "torchsparse"]
+no-build-isolation-package = ["flash-attn", "nanots"]
 conflicts = [[{ extra = "cpu" }, { extra = "cu130" }]]
 dependency-metadata = [
     { name = "flash-attn", version = "2.8.3", requires-dist = ["torch", "setuptools", "einops"] },
-    { name = "torchsparse", version = "2.2.0", requires-dist = ["torch", "setuptools", "ninja"] },
+    { name = "nanots", version = "2.2.0", requires-dist = ["torch", "setuptools", "ninja"] },
 ]
 
 
@@ -52,7 +52,7 @@ torchvision = [
     { index = "pytorch-cpu", extra = "cpu" },
     { index = "pytorch-cu130", extra = "cu130", marker = "sys_platform == 'win32' or sys_platform == 'linux'" },
 ]
-torchsparse = { git = "ssh://git@github.com/3DFin/nanoTorchSparse" }
+nanots = { git = "ssh://git@github.com/3DFin/nanoTorchSparse" }
 
 [[tool.uv.index]]
 name = "pytorch-cpu"

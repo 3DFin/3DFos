@@ -24,8 +24,8 @@ import sys
 import torch.nn as nn
 from collections import OrderedDict
 
-from torchsparse.nn import Conv3d
-from torchsparse.tensor import SparseTensor
+from nanots.nn import Conv3d
+from nanots.tensor import SparseTensor
 
 from .structure import Point
 

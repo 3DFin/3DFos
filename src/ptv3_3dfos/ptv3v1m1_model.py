@@ -15,17 +15,20 @@ import torch_geometric
 from addict import Dict
 from torch.nn.attention import SDPBackend, sdpa_kernel
 from torch.nn.functional import scaled_dot_product_attention
-from torchsparse.nn import Conv3d
-from torchsparse.nn import functional as F
+from nanots.nn import Conv3d
+from nanots.nn import functional as F
 
 
-#In torchsparse, we change the dataflow for CPU as it's ne only available solution
+#In torchsparse / nanots, we change the dataflow for CPU as it's ne only available solution
 config = F.conv_config.get_default_conv_config()
 if not torch.cuda.is_available():
     config.dataflow = F.Dataflow.GatherScatter
     config.kmap_mode = "hashmap"
 else:
-    config.ifsort = False;
+    config.dataflow = F.Dataflow.ImplicitGEMM
+    #config.kmap_mode = "hashmap"
+    #config.split_mask_num = 3
+    #config.ifsort = True
 F.conv_config.set_global_conv_config(config)
 
 
@@ -754,12 +757,6 @@ class PointTransformerV3(PointModule):
         point = self.enc(point)
         if not self.cls_mode:
             point = self.dec(point)
-        # else:
-        #     point.feat = torch_scatter.segment_csr(
-        #         src=point.feat,
-        #         indptr=nn.functional.pad(point.offset, (1, 0)),
-        #         reduce="mean",
-        #     )
         return point
 
 

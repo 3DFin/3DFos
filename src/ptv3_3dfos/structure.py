@@ -24,7 +24,7 @@ import torch
 
 from addict import Dict
 
-from torchsparse.tensor import SparseTensor
+from nanots.tensor import SparseTensor
 
 from .serialization import encode
 from .utils import offset2batch, batch2offset
