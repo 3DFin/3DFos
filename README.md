@@ -1,6 +1,6 @@
 # PTV3-3DFos
 
-Minimal PTV3 standalone inspired by [sonata](https://github.com/facebookresearch/sonata) standalone.
+Minimal PTV3 standalone for forestry application, inspired by [sonata](https://github.com/facebookresearch/sonata) standalone.
 
 Please cite [PointCept](https://github.com/pointcept/pointcept), PTV3 and Sonata if you use this work (see PointCept details for details).
 
@@ -52,12 +52,12 @@ This could be very time-consuming, particularly on Windows. (On Linux, the insta
 uv run 3DFos <path_to_the_model.pth> <path_to_the_cloud.las|ply> [--grid_size 0.05] [--backbone ptv3]
 ```
 
-The point cloud can be in las/laz or ply format.
+Point clouds can be in las/laz or ply format.
 
 ## TODO:
 
-- Handle global shift for LAS clouds?
 - Use point closest to the voxel center.
 - Add a spatial tiling mechanism?
 - Add LightPT model.
+- Use torch valen.
 - Where to store the weights?

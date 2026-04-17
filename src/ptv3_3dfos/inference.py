@@ -71,7 +71,8 @@ def preprocess(xyz : np.ndarray, z0 : np.ndarray, dist_axes : np.ndarray, grid_s
     )
 
     # resample the data according to the voxelization
-    grid_coords = np.floor((voxelated_cloud - np.min(xyz, axis=0)) / grid_size).astype(np.int_)
+    global_shift = np.min(xyz, axis=0)
+    grid_coords = np.floor((voxelated_cloud - global_shift) / grid_size).astype(np.int_)
 
     remap_ids = remap_ids.astype(np.uint32)
 
@@ -79,7 +80,7 @@ def preprocess(xyz : np.ndarray, z0 : np.ndarray, dist_axes : np.ndarray, grid_s
 
     normals = pgeof.compute_features_selected(
         xyz_sampled,
-        search_radius=0.5,
+        search_radius=0.5, # TODO, could be exposed as a parameter
         max_knn=500000,
         selected_features=[
             pgeof.EFeatureID.Normal_x,
@@ -90,14 +91,12 @@ def preprocess(xyz : np.ndarray, z0 : np.ndarray, dist_axes : np.ndarray, grid_s
 
     features = {
         "grid_size": grid_size,
-        "coord": voxelated_cloud.astype(np.float32),
+        "grid_coord": grid_coords,
+        "coord": (xyz_sampled - global_shift).astype(np.float32), #shift cloud to avoid quantization / stabilize
         "normal": normals.astype(np.float32),
         "z0": np.expand_dims(z0[sample_ids], axis=1).astype(np.float32),
         "dist_axes": np.expand_dims(dist_axes[sample_ids], axis=1).astype(np.float32),
     }
-
-
-    features["grid_coord"] = grid_coords
 
     return features, remap_ids, sample_ids
 
