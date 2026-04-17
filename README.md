@@ -20,7 +20,7 @@ and by the Spanish Knowledge Generation project (PID2021-126790NB-I00):
 - Removed torch_scatter dependencies (replaced scatter one from PYG by pure torch calls, simplify dependencies).
 - Replaced spconv by Torchsparse++ / nanoTSparse for sparse convolution. nanoTSparse is not affected by CUMM bugs (like https://github.com/FindDefinition/cumm/issues/26) and is easier
   to package / maintain. We do not provide yet pre compiled version of nanoTSparse, you may need a C/C++ and CUDA compiler in order to run this code.
-- Use toch built-in SDPA to levrage efficient and memory friendly attention kernels. This Remove the need of flash Attention.
+- Use torch built-in SDPA to leverage efficient and memory friendly attention kernels. This removes the need for flash attention.
 - Added a dedicated inference demo/script for 3DFos datasets
 
 ## Installation:
@@ -36,7 +36,7 @@ uv sync --extra cu130 --extra nanots
 ```
 
 Flash attention lowers memory usage and improves runtime, but it's not mandatory.
-if you want to use `flash-attn` package, you have to run this command **AFTER** the first one.
+If you want to use `flash-attn` package, you have to run this command **AFTER** the first one.
 
 ```
 uv sync --extra cu130 --extra nanots --extra flash-attn
@@ -59,5 +59,5 @@ Point clouds can be in las/laz or ply format.
 - Use point closest to the voxel center.
 - Add a spatial tiling mechanism?
 - Add LightPT model.
-- Use torch valen.
+- Use torch varlen.
 - Where to store the weights?

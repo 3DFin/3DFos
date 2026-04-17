@@ -6,29 +6,25 @@ Please cite our work if the code is helpful to you.
 """
 
 import math
-
 from functools import partial
 
 import torch
 import torch.nn as nn
 import torch_geometric
 from addict import Dict
-from torch.nn.attention import SDPBackend, sdpa_kernel
-from torch.nn.functional import scaled_dot_product_attention
 from nanots.nn import Conv3d
 from nanots.nn import functional as F
+from torch.nn.attention import SDPBackend, sdpa_kernel
+from torch.nn.functional import scaled_dot_product_attention
 
-
-#In torchsparse / nanots, we change the dataflow for CPU as it's ne only available solution
+# In torchsparse, we change the dataflow for CPU as it's ne only available solution
 config = F.conv_config.get_default_conv_config()
 if not torch.cuda.is_available():
     config.dataflow = F.Dataflow.GatherScatter
     config.kmap_mode = "hashmap"
 else:
     config.dataflow = F.Dataflow.ImplicitGEMM
-    #config.kmap_mode = "hashmap"
-    #config.split_mask_num = 4
-    #config.ifsort = True
+    config.ifsort = False
 F.conv_config.set_global_conv_config(config)
 
 
@@ -255,7 +251,7 @@ class SerializedAttention(PointModule):
             q = qkv[:, :, 0].transpose(1, 2)
             k = qkv[:, :, 1].transpose(1, 2)
             v = qkv[:, :, 2].transpose(1, 2)
-            feat = scaled_dot_product_attention(q, k, v,scale=self.scale)
+            feat = scaled_dot_product_attention(q, k, v, scale=self.scale)
             feat = feat.transpose(1, 2).reshape(-1, C)
         else:
             feat = flash_attn.flash_attn_varlen_qkvpacked_fun(
@@ -774,7 +770,7 @@ def model_config():
         qk_scale=None,
         attn_drop=0.0,
         proj_drop=0.0,
-        drop_path=0.3, #no-op in eval
+        drop_path=0.3,  # no-op in eval
         shuffle_orders=True,
         pre_norm=True,
         enable_rpe=False,
