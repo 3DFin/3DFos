@@ -57,7 +57,7 @@ def load(
     # Weights have different names and and shape
     # Bias is ok
     if backbone.lower() == "ptv3":
-        print("ptv3 state dict remapping for torchsparse++")
+        print("PTV3 state dict remapping for Torchsparse++ / [nano]TS")
         for k,v in ckpt["state_dict"].items():
             if "cpe.0.weight" in k or "conv.weight" in k:
                 v = v.permute(3,2,1,4,0)
