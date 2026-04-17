@@ -103,6 +103,7 @@ def run_inference(model, data, remap_ids, original_coord, output_path, device):
                 data[key] = data[key].to(device, non_blocking=True)
 
         predictions = model(data)
+
         labels = predictions["seg_logits"][remap_ids].argmax(dim=-1).cpu().numpy()
 
         header = laspy.LasHeader(version="1.4", point_format=6)
@@ -141,9 +142,9 @@ def main():
     else:
         print(f"{args.backbone} backbone is unknown")
         exit(1)
+
     model.to(device).eval()
     print(f"Model loaded in {time.time() - start_model:.2f} seconds.")
-
 
     start_data = time.time()
     suffix = args.input_path.suffix.lower()

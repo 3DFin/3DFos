@@ -27,12 +27,10 @@ if not torch.cuda.is_available():
 else:
     config.dataflow = F.Dataflow.ImplicitGEMM
     #config.kmap_mode = "hashmap"
-    #config.split_mask_num = 3
+    #config.split_mask_num = 4
     #config.ifsort = True
 F.conv_config.set_global_conv_config(config)
 
-
-from timm.layers import DropPath
 
 try:
     import flash_attn
@@ -366,9 +364,6 @@ class Block(PointModule):
                 drop=proj_drop,
             )
         )
-        self.drop_path = PointSequential(
-            DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
-        )
 
     def forward(self, point: Point):
         shortcut = point.feat
@@ -377,7 +372,7 @@ class Block(PointModule):
         shortcut = point.feat
         if self.pre_norm:
             point = self.norm1(point)
-        point = self.drop_path(self.attn(point))
+        point = self.attn(point)
         point.feat = shortcut + point.feat
         if not self.pre_norm:
             point = self.norm1(point)
@@ -385,7 +380,7 @@ class Block(PointModule):
         shortcut = point.feat
         if self.pre_norm:
             point = self.norm2(point)
-        point = self.drop_path(self.mlp(point))
+        point = self.mlp(point)
         point.feat = shortcut + point.feat
         if not self.pre_norm:
             point = self.norm2(point)
@@ -779,7 +774,7 @@ def model_config():
         qk_scale=None,
         attn_drop=0.0,
         proj_drop=0.0,
-        drop_path=0.3,
+        drop_path=0.3, #no-op in eval
         shuffle_orders=True,
         pre_norm=True,
         enable_rpe=False,
