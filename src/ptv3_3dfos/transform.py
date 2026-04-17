@@ -11,7 +11,7 @@ import torch
 import copy
 from collections.abc import Sequence, Mapping
 
-from .registry import Registry
+from ptv3_3dfos.registry import Registry
 
 TRANSFORMS = Registry("transforms")
 

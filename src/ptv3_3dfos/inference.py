@@ -1,3 +1,10 @@
+"""
+Main inference script
+
+Authors: Romain Janvier and Carlos Cabo
+Copyright: Department of Mining Exploitation of the University of Oviedo (Spain)
+"""
+
 import argparse
 import time
 from pathlib import Path

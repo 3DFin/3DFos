@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
-from .structure import Point
-from .ptv3v1m1_model import PointTransformerV3
+
+from ptv3_3dfos.structure import Point
+from ptv3_3dfos.ptv3v1m1_model import PointTransformerV3
 
 class SegmentationHeadV2(nn.Module):
     def __init__(
