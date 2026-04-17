@@ -12,9 +12,8 @@ import torch
 import torch.nn as nn
 import torch_geometric
 from addict import Dict
-from nanots.nn import Conv3d
-from nanots.nn import functional as F
-from torch.nn.attention import SDPBackend, sdpa_kernel
+from nanotsparse.nn import Conv3d
+from nanotsparse.nn import functional as F
 from torch.nn.functional import scaled_dot_product_attention
 
 # In torchsparse, we change the dataflow for CPU as it's ne only available solution
@@ -30,8 +29,6 @@ F.conv_config.set_global_conv_config(config)
 
 try:
     import flash_attn
-
-    flash_attn = None
 except ImportError:
     flash_attn = None
 

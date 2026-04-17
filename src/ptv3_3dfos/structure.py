@@ -6,13 +6,11 @@ Please cite our work if the code is helpful to you.
 """
 
 import torch
-
 from addict import Dict
-
-from nanots.tensor import SparseTensor
+from nanotsparse.tensor import SparseTensor
 
 from ptv3_3dfos.serialization import encode
-from ptv3_3dfos.utils import offset2batch, batch2offset
+from ptv3_3dfos.utils import batch2offset, offset2batch
 
 
 class Point(Dict):
@@ -130,11 +128,16 @@ class Point(Dict):
         if "sparse_shape" in self.keys():
             sparse_shape = self.sparse_shape
         else:
-            batch_size=self.batch[-1].tolist() + 1
+            batch_size = self.batch[-1].tolist() + 1
             sparse_range = torch.add(
                 torch.max(self.grid_coord, dim=0).values, 0
             ).tolist()
-            sparse_shape = (batch_size, sparse_range[0], sparse_range[1], sparse_range[2])
+            sparse_shape = (
+                batch_size,
+                sparse_range[0],
+                sparse_range[1],
+                sparse_range[2],
+            )
 
         sparse_conv_feat = SparseTensor(
             feats=self.feat,

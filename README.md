@@ -18,8 +18,8 @@ and by the Spanish Knowledge Generation project (PID2021-126790NB-I00):
 
 - Added clean uv packaging
 - Removed torch_scatter dependencies (replaced scatter one from PYG by pure torch calls, simplify dependencies).
-- Replaced spconv by Torchsparse++ / nanoTSparse for sparse convolution. nanoTSparse is not affected by CUMM bugs (like https://github.com/FindDefinition/cumm/issues/26) and is easier
-  to package / maintain. We do not provide yet pre compiled version of nanoTSparse, you may need a C/C++ and CUDA compiler in order to run this code.
+- Replaced spconv by Torchsparse++ / [nano]TSparse for sparse convolution. [nano]TSparse is not affected by CUMM bugs (like https://github.com/FindDefinition/cumm/issues/26) and is easier
+  to package / maintain. We do not provide yet pre compiled version of [nano]TSparse, you may need a C/C++ and CUDA compiler in order to run this code.
 - Use torch built-in SDPA to leverage efficient and memory friendly attention kernels. This removes the need for flash attention.
 - Added a dedicated inference demo/script for 3DFos datasets
 
@@ -32,14 +32,14 @@ uv sync --extra cu130
 then
 
 ```
-uv sync --extra cu130 --extra nanots
+uv sync --extra cu130 --extra nanotsparse
 ```
 
 Flash attention lowers memory usage and improves runtime, but it's not mandatory.
 If you want to use `flash-attn` package, you have to run this command **AFTER** the first one.
 
 ```
-uv sync --extra cu130 --extra nanots --extra flash-attn
+uv sync --extra cu130 --extra nanotsparse --extra flash-attn
 ```
 
 Flash attention is only compatible with NVIDIA cards that have a compute capability of 8.0+.
