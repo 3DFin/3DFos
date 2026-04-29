@@ -39,7 +39,7 @@ Flash attention lowers memory usage and improves runtime, but it's not mandatory
 if you want to use `flash-attn` package, you have to run this command **AFTER** the first one.
 
 ```
-uv sync --extra cu130 --extra nanots --extra flash-attn
+uv sync --extra cu130 --extra nanotsparse --extra flash-attn
 ```
 
 Flash attention is only compatible with NVIDIA cards that have a compute capability of 8.0+.
