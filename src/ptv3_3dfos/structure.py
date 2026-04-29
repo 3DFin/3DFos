@@ -9,7 +9,7 @@ import torch
 
 from addict import Dict
 
-from nanots.tensor import SparseTensor
+from nanotsparse.tensor import SparseTensor
 
 from ptv3_3dfos.serialization import encode
 from ptv3_3dfos.utils import offset2batch, batch2offset

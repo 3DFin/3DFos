@@ -15,15 +15,16 @@ import torch_geometric
 from addict import Dict
 from torch.nn.attention import SDPBackend, sdpa_kernel
 from torch.nn.functional import scaled_dot_product_attention
-from nanots.nn import Conv3d
-from nanots.nn import functional as F
+from nanotsparse.nn import Conv3d
+from nanotsparse.nn import functional as F
 
 
-#In torchsparse / nanots, we change the dataflow for CPU as it's ne only available solution
+#In torchsparse / nanotsparse, we change the dataflow for CPU as it's ne only available solution
 config = F.conv_config.get_default_conv_config()
 if not torch.cuda.is_available():
     config.dataflow = F.Dataflow.GatherScatter
     config.kmap_mode = "hashmap"
+    print("hello")
 else:
     config.dataflow = F.Dataflow.ImplicitGEMM
     #config.kmap_mode = "hashmap"

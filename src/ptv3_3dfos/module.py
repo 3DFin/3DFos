@@ -10,8 +10,8 @@ import sys
 import torch.nn as nn
 from collections import OrderedDict
 
-from nanots.nn import Conv3d
-from nanots.tensor import SparseTensor
+from nanotsparse.nn import Conv3d
+from nanotsparse.tensor import SparseTensor
 
 from ptv3_3dfos.structure import Point
 
