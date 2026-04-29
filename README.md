@@ -2,7 +2,7 @@
 
 Minimal PTV3 standalone for forestry application, inspired by [sonata](https://github.com/facebookresearch/sonata) standalone.
 
-Please cite [PointCept](https://github.com/pointcept/pointcept), PTV3 and Sonata if you use this work (see PointCept details for details).
+Please cite [PointCept](https://github.com/pointcept/pointcept), PTV3 and Sonata if you use this work (see PointCept for details).
 
 PTV3-3DFos has been developed at the Centre of Wildfire Research of Swansea University (UK) in collaboration with the Research Institute of Biodiversity (CSIC, Spain) and the Department of Mining Exploitation of the University of Oviedo (Spain).
 
