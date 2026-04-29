@@ -59,5 +59,4 @@ Point clouds can be in las/laz or ply format.
 - Use point closest to the voxel center.
 - Add a spatial tiling mechanism?
 - Add LightPT model.
-- Use torch valen.
-- Where to store the weights?
+- Use torch varlen.
