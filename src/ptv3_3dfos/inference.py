@@ -121,8 +121,8 @@ def run_inference(model, data, remap_ids, original_coord, output_path, device):
 
 def main():
     parser = argparse.ArgumentParser(description="3D Point Cloud Segmentation using ptv3_3dfos.")
-    parser.add_argument("model_path", type=Path, help="Path to the model file (.pth)")
     parser.add_argument("input_path", type=Path, help="Path to the input PLY file")
+    parser.add_argument("--model_path", type=Path, help="Path to the model file (.pth)")
     parser.add_argument("--output_path", type=Path, default="seg_result.las", help="Output LAS file path")
     parser.add_argument("--grid_size", type=float, default=0.1, help="Voxel grid size")
     parser.add_argument("--backbone", type=str, choices=["ptv3"], default="ptv3", help="Choose backbone: ptv3 only for now")
@@ -144,7 +144,7 @@ def main():
     if args.backbone == "ptv3":
         config = ptv3_3dfos.ptv3v1m1_model.model_config()
         config["enable_flash"] = bool(flash_attn)
-        model = ptv3_3dfos.seghead.load(name=args.model_path, custom_config=config, backbone="ptv3")
+        model = ptv3_3dfos.seghead.load(ckpt_path=args.model_path, custom_config=config, backbone="ptv3")
     else:
         print(f"{args.backbone} backbone is unknown")
         exit(1)

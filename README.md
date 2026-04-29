@@ -49,8 +49,10 @@ This could be very time-consuming, particularly on Windows. (On Linux, the insta
 ## Usage
 
 ```
-uv run 3DFos <path_to_the_model.pth> <path_to_the_cloud.las|ply> [--grid_size 0.05] [--backbone ptv3]
+uv run 3DFos <path_to_the_cloud.las|ply> [--model_path model.ckpt] [--grid_size 0.05] [--backbone ptv3]
 ```
+
+`model_path` flag is optional and latest weights are automatically downloaded from Github [release page](https://github.com/3DFin/PTV3_3DFos/releases).
 
 Point clouds can be in las/laz or ply format.
 

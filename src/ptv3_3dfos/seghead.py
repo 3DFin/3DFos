@@ -4,6 +4,7 @@ import torch.nn as nn
 from ptv3_3dfos.structure import Point
 from ptv3_3dfos.ptv3v1m1_model import PointTransformerV3
 
+
 class SegmentationHeadV2(nn.Module):
     def __init__(
         self,
@@ -29,23 +30,22 @@ class SegmentationHeadV2(nn.Module):
 
 
 def load(
-    name: str = "3dfos",
+    ckpt_path: str = None,
     custom_config: dict = None,
     backbone: str = "ptv3",
 ):
     import os
-    if os.path.isfile(name):
-        print(f"Loading checkpoint in local path: {name} ...")
-        ckpt_path = name
+    if ckpt_path and os.path.isfile(ckpt_path):
+        print(f"Loading checkpoint in local path: {ckpt_path} ...")
+        from packaging import version
+        if version.parse(torch.__version__) >= version.parse("2.4"):
+            ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
+        else:
+            ckpt = torch.load(ckpt_path, map_location="cpu")
     else:
-        raise RuntimeError(f"Model {name} not found")
-
-    from packaging import version
-    if version.parse(torch.__version__) >= version.parse("2.4"):
-        ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
-    else:
-        ckpt = torch.load(ckpt_path, map_location="cpu")
-
+        model_url = "https://github.com/3DFin/PTV3_3DFos/releases/download/v0.0.1/ptv3_3dfos_005.pth"
+        print(f"Using torch.hub model at {model_url}")
+        ckpt = torch.hub.load_state_dict_from_url(model_url);
 
     if backbone.lower() == "ptv3":
         model = SegmentationHeadV2(num_classes=4, backbone_out_channels=64, backbone=PointTransformerV3(**custom_config))
