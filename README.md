@@ -20,7 +20,7 @@ and by the Spanish Knowledge Generation project (PID2021-126790NB-I00):
 - Removed torch_scatter dependencies (replaced scatter one from PYG by pure torch calls, simplify dependencies).
 - Replaced spconv by Torchsparse++ / nanoTSparse for sparse convolution. nanoTSparse is not affected by CUMM bugs (like https://github.com/FindDefinition/cumm/issues/26) and is easier
   to package / maintain. We do not provide yet pre compiled version of nanoTSparse, you may need a C/C++ and CUDA compiler in order to run this code.
-- Use toch built-in SDPA to levrage efficient and memory friendly attention kernels. This Remove the need of flash Attention.
+- Use toch built-in SDPA to levrage efficient and memory friendly attention kernels. This removes the need of flash Attention.
 - Added a dedicated inference demo/script for 3DFos datasets
 
 ## Installation:
@@ -49,16 +49,21 @@ This could be very time-consuming, particularly on Windows. (On Linux, the insta
 ## Usage
 
 ```
-uv run 3DFos <path_to_the_cloud.las|ply> [--model_path model.ckpt] [--grid_size 0.05] [--backbone ptv3]
+uv run 3DFos <path_to_the_cloud.las|ply> [--output_path seg_result.las] [--model_path model.ckpt] [--grid_size 0.05] [--backbone ptv3]
 ```
 
-`model_path` flag is optional and latest weights are automatically downloaded from Github [release page](https://github.com/3DFin/PTV3_3DFos/releases).
+`model_path` flag is optional and latest weights are automatically downloaded from the [release page](https://github.com/3DFin/PTV3_3DFos/releases) on Github.
 
-Point clouds can be in las/laz or ply format.
+Point clouds can be either in las/laz or ply format.
 
-## TODO:
+For now, only the weights for PTV3 trained at a 0.05 m voxel size with full 3DFin features (i.e., distance to axis and elevation) are available. This means you **must** first run 3DFin on your point cloud and then provide its output to 3DFos
 
+You can adapt the voxel size. For example, you could run inference at a 0.01 m voxel size for a model trained at 0.05 m to lower runtime and resource consumption, at the cost of slightly reduced accuracy of the results.
+
+
+## TODOs:
+
+- Add LightPT model.
 - Use point closest to the voxel center.
 - Add a spatial tiling mechanism?
-- Add LightPT model.
 - Use torch varlen.
