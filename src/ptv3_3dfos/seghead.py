@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 
-from ptv3_3dfos.structure import Point
 from ptv3_3dfos.ptv3v1m1_model import PointTransformerV3
+from ptv3_3dfos.structure import Point
 
 
 class SegmentationHeadV2(nn.Module):
@@ -35,9 +35,11 @@ def load(
     backbone: str = "ptv3",
 ):
     import os
+
     if ckpt_path and os.path.isfile(ckpt_path):
         print(f"Loading checkpoint in local path: {ckpt_path} ...")
         from packaging import version
+
         if version.parse(torch.__version__) >= version.parse("2.4"):
             ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
         else:
@@ -45,10 +47,14 @@ def load(
     else:
         model_url = "https://github.com/3DFin/PTV3_3DFos/releases/download/v0.0.1/ptv3_3dfos_005.pth"
         print(f"Using torch.hub model at {model_url}")
-        ckpt = torch.hub.load_state_dict_from_url(model_url);
+        ckpt = torch.hub.load_state_dict_from_url(model_url, map_location="cpu")
 
     if backbone.lower() == "ptv3":
-        model = SegmentationHeadV2(num_classes=4, backbone_out_channels=64, backbone=PointTransformerV3(**custom_config))
+        model = SegmentationHeadV2(
+            num_classes=4,
+            backbone_out_channels=64,
+            backbone=PointTransformerV3(**custom_config),
+        )
     else:
         raise ValueError(f"Unknown backbone: {backbone}. Choose 'ptv3'")
 
@@ -59,9 +65,9 @@ def load(
     # Bias is ok
     if backbone.lower() == "ptv3":
         print("PTV3 state dict remapping for Torchsparse++ / [nano]TS")
-        for k,v in ckpt["state_dict"].items():
+        for k, v in ckpt["state_dict"].items():
             if "cpe.0.weight" in k or "conv.weight" in k:
-                v = v.permute(3,2,1,4,0)
+                v = v.permute(3, 2, 1, 4, 0)
                 v = v.reshape(-1, v.shape[3], v.shape[4])
                 k = k.replace("weight", "kernel")
             torchsparse_statedict[k] = v
