@@ -1,3 +1,6 @@
+from sympy.core.benchmarks.bench_expand import p
+from typing import Any
+from pathlib import Path
 import torch
 import torch.nn as nn
 
@@ -5,14 +8,19 @@ from ptv3_3dfos.ptv3v1m1_model import PointTransformerV3
 from ptv3_3dfos.liteptv1m1_model import LitePT
 from ptv3_3dfos.structure import Point
 
+# Model constants
+NUM_CLASSES = 4
+PTV3_OUT_CHANNELS = 64
+LITEPT_OUT_CHANNELS = 72
+
 
 class SegmentationHeadV2(nn.Module):
     def __init__(
         self,
-        num_classes,
-        backbone_out_channels,
-        backbone=None,
-    ):
+        num_classes: int,
+        backbone_out_channels: int,
+        backbone: nn.Module | None = None,
+    ) -> None:
         super().__init__()
         self.seg_head = (
             nn.Linear(backbone_out_channels, num_classes)
@@ -21,7 +29,7 @@ class SegmentationHeadV2(nn.Module):
         )
         self.backbone = backbone
 
-    def forward(self, input_dict):
+    def forward(self, input_dict: dict) -> dict:
         point = Point(input_dict)
         point = self.backbone(point)
         feat = point.feat
@@ -30,48 +38,47 @@ class SegmentationHeadV2(nn.Module):
         return dict(seg_logits=seg_logits)
 
 
-def load(
-    ckpt_path: str = None,
-    custom_config: dict = None,
-    backbone: str = "ptv3",
-):
-    import os
-
-    if ckpt_path and os.path.isfile(ckpt_path):
-        print(f"Loading checkpoint in local path: {ckpt_path} ...")
-        from packaging import version
-
-        if version.parse(torch.__version__) >= version.parse("2.4"):
-            ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
-        else:
-            ckpt = torch.load(ckpt_path, map_location="cpu")
+def try_load_model(ckpt_path: Path | None = None, backbone: str="ptv3") -> dict[str, Any]:
+    """Load model checkpoint from local path or download from Github releases (torch.hub mecanism)."""
+    if ckpt_path and ckpt_path.is_file():
+        print(f"Loading checkpoint from local path: {ckpt_path}")
+        ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
     else:
-        model_url = "https://github.com/3DFin/PTV3_3DFos/releases/download/v0.0.1/ptv3_3dfos_005.pth"
+        model_url = f"https://github.com/3DFin/PTV3_3DFos/releases/download/v0.0.1/{backbone}_3dfos_005.pth"
         print(f"Using torch.hub model at {model_url}")
         ckpt = torch.hub.load_state_dict_from_url(model_url, map_location="cpu")
+    return ckpt
 
-    if backbone.lower() == "ptv3":
+def load(
+    ckpt_path: Path | None = None,
+    custom_config: dict | None = None,
+    backbone: str = "ptv3",
+) -> nn.Module:
+    backbone_lower = backbone.lower()
+    if backbone_lower == "ptv3":
         model = SegmentationHeadV2(
-            num_classes=4,
-            backbone_out_channels=64,
+            num_classes=NUM_CLASSES,
+            backbone_out_channels=PTV3_OUT_CHANNELS,
             backbone=PointTransformerV3(**custom_config),
         )
-    elif backbone.lower() == "litept":
+    elif backbone_lower == "litept":
         model = SegmentationHeadV2(
-            num_classes=4,
-            backbone_out_channels=72,
+            num_classes=NUM_CLASSES,
+            backbone_out_channels=LITEPT_OUT_CHANNELS,
             backbone=LitePT(**custom_config),
         )
     else:
-        raise ValueError(f"Unknown backbone: {backbone}. Choose 'ptv3' or 'litept'")
+        raise ValueError(f"Unsupported backbone: '{backbone}'. Choose from: ptv3, litept")
 
-    torchsparse_statedict = {}
+    ckpt = try_load_model(ckpt_path, backbone_lower)
 
-    # Pointcept state dict remapping for torchsparse++ / nanoTSparse.
-    # Weights have different names and and shape
-    # Bias are ok
-    if backbone.lower() == "ptv3" or backbone.lower() == "litept":
-        print("PTV3 state dict remapping for Torchsparse++ / [nano]TS")
+    torchsparse_statedict:dict[str, Any] = {}
+
+    # State dict remapping for torchsparse++ / nanoTSparse
+    # Both PTV3 and LitePT use sparse convolutions that need weight remapping
+    # Weights have different names and shape, bias is ok.
+    if backbone_lower in ("ptv3", "litept"):
+        print(f"{backbone.upper()} state dict remapping for Torchsparse++ / [nano]TS")
         for k, v in ckpt["state_dict"].items():
             if "cpe.0.weight" in k or "conv.weight" in k or "conv.0.weight" in k:
                 v = v.permute(3, 2, 1, 4, 0)
