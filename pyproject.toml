@@ -1,12 +1,12 @@
 [build-system]
-requires = ["uv_build>=0.7.12,<0.8.0"]
+requires = ["uv_build>=0.11.17,<0.12"]
 build-backend = "uv_build"
 
 [project]
-name = "PTV3-3DFos"
+name = "3DFos"
 version = "0.1.0"
 description = "Forestry standalone inference "
-requires-python = ">=3.13.0,<3.14.0"
+requires-python = ">=3.12.0,<3.14.0"
 readme = "README.md"
 
 dependencies = [
@@ -23,18 +23,21 @@ dependencies = [
 flash-attn = ["flash-attn==2.8.3"]
 nanotsparse = ["nanotsparse>=2.2.0"]
 cpu = [
-    "torch~=2.11.0",
+    "torch~=2.12.0",
     "torch-geometric>=2.6.1",
-    "torchvision~=0.26.0",
+    "torchvision~=0.27.0",
 ]
 cu130 = [
-    "torch~=2.11.0",
+    "torch~=2.12.0",
     "torch-geometric>=2.6.1",
-    "torchvision~=0.26.0",
+    "torchvision~=0.27.0",
 ]
 
+[tool.uv.build-backend]
+module-name = "three_d_fos"
+
 [tool.uv]
-no-build-isolation-package = ["flash-attn", "nanots"]
+no-build-isolation-package = ["flash-attn", "nanotsparse"]
 conflicts = [[{ extra = "cpu" }, { extra = "cu130" }]]
 dependency-metadata = [
     { name = "flash-attn", version = "2.8.3", requires-dist = ["torch", "setuptools", "einops"] },
@@ -63,4 +66,4 @@ url = "https://download.pytorch.org/whl/cu130"
 explicit = true
 
 [project.scripts]
-3DFos = "ptv3_3dfos.inference:main" # inference tailored for 3DFin
+3DFos = "three_d_fos.inference:main" # inference tailored for 3DFin

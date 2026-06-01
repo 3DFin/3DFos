@@ -13,7 +13,7 @@ from collections import OrderedDict
 from nanotsparse.nn import Conv3d
 from nanotsparse.tensor import SparseTensor
 
-from ptv3_3dfos.structure import Point
+from three_d_fos.structure import Point
 
 
 class PointModule(nn.Module):

@@ -26,7 +26,7 @@ and by the Spanish Knowledge Generation project (PID2021-126790NB-I00):
 ## Installation:
 
 ```
-uv sync --extra cu130
+uv sync --extra cu130 | --extra cpu
 ```
 
 then
@@ -37,7 +37,7 @@ uv sync --extra cu130 --extra nanotsparse
 
 on Windows system, it might be necessary to set `DUSTUTILS_USE_SDK` env variable in order to compile `nanoTSparse`.
 
-i.e on Windows 'Developer PowerShell` terminal session. 
+i.e on Windows Developer PowerShell` terminal session. 
 
 ```
 $env:DUSTUTILS_USE_SDK = 1
@@ -61,7 +61,7 @@ This could be very time-consuming, particularly on Windows. (On Linux, the insta
 uv run 3DFos <path_to_the_cloud.las|ply> [--output_path seg_result.las] [--model_path model.ckpt] [--grid_size 0.05] [--backbone ptv3 | litept]
 ```
 
-`model_path` flag is optional and latest weights are automatically downloaded from the [release page](https://github.com/3DFin/PTV3_3DFos/releases) on Github.
+`model_path` flag is optional and latest weights are automatically downloaded from the [release page](https://github.com/3DFin/3DFos/releases) on Github.
 
 Point clouds can be either in las/laz or ply format.
 

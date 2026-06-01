@@ -11,8 +11,8 @@ from addict import Dict
 
 from nanotsparse.tensor import SparseTensor
 
-from ptv3_3dfos.serialization import encode
-from ptv3_3dfos.utils import offset2batch, batch2offset
+from three_d_fos.serialization import encode
+from three_d_fos.utils import offset2batch, batch2offset
 
 
 class Point(Dict):

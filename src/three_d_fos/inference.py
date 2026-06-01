@@ -15,9 +15,9 @@ import torch
 from plyfile import PlyData
 
 import pgeof
-import ptv3_3dfos
-import ptv3_3dfos.seghead
-import ptv3_3dfos.liteptv1m1_model
+import three_d_fos
+import three_d_fos.seghead
+import three_d_fos.liteptv1m1_model
 from dendroptimized import voxelize
 
 try:
@@ -137,7 +137,7 @@ def run_inference(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="3D Point Cloud Segmentation using ptv3_3dfos.")
+    parser = argparse.ArgumentParser(description="3D Point Cloud Segmentation for forestry applications.")
     parser.add_argument("input_path", type=Path, help="Path to the input PLY file")
     parser.add_argument("--model_path", type=Path, help="Path to the model file (.pth)")
     parser.add_argument("--output_path", type=Path, default="seg_result.las", help="Output LAS file path")
@@ -156,15 +156,15 @@ def main() -> None:
     start_total = time.time()
 
     start_model = time.time()
-    transform = ptv3_3dfos.transform.transform_config()
+    transform = three_d_fos.transform.transform_config()
     if args.backbone == "ptv3":
-        config = ptv3_3dfos.ptv3v1m1_model.model_config()
+        config = three_d_fos.ptv3v1m1_model.model_config()
         config["enable_flash"] = bool(flash_attn)
-        model = ptv3_3dfos.seghead.load(ckpt_path=args.model_path, custom_config=config, backbone="ptv3")
+        model = three_d_fos.seghead.load(ckpt_path=args.model_path, custom_config=config, backbone="ptv3")
     elif args.backbone == "litept":
-        config = ptv3_3dfos.liteptv1m1_model.model_config()
+        config = three_d_fos.liteptv1m1_model.model_config()
         config["enable_flash"] = bool(flash_attn)
-        model = ptv3_3dfos.seghead.load(ckpt_path=args.model_path, custom_config=config, backbone="litept")
+        model = three_d_fos.seghead.load(ckpt_path=args.model_path, custom_config=config, backbone="litept")
     else:
         raise ValueError(f"Unsupported backbone: '{args.backbone}'. Choose from: ptv3, litept")
 

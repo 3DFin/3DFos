@@ -4,9 +4,9 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 
-from ptv3_3dfos.ptv3v1m1_model import PointTransformerV3
-from ptv3_3dfos.liteptv1m1_model import LitePT
-from ptv3_3dfos.structure import Point
+from three_d_fos.ptv3v1m1_model import PointTransformerV3
+from three_d_fos.liteptv1m1_model import LitePT
+from three_d_fos.structure import Point
 
 # Model constants
 NUM_CLASSES = 4
@@ -44,7 +44,7 @@ def try_load_model(ckpt_path: Path | None = None, backbone: str="ptv3") -> dict[
         print(f"Loading checkpoint from local path: {ckpt_path}")
         ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
     else:
-        model_url = f"https://github.com/3DFin/PTV3_3DFos/releases/download/v0.0.1/{backbone}_3dfos_005.pth"
+        model_url = f"https://github.com/3DFin/3DFos/releases/download/v0.0.1/{backbone}_3dfos_005.pth"
         print(f"Using torch.hub model at {model_url}")
         ckpt = torch.hub.load_state_dict_from_url(model_url, map_location="cpu")
     return ckpt
