@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 
 from ptv3_3dfos.ptv3v1m1_model import PointTransformerV3
+from ptv3_3dfos.liteptv1m1_model import LitePT
 from ptv3_3dfos.structure import Point
 
 
@@ -55,18 +56,24 @@ def load(
             backbone_out_channels=64,
             backbone=PointTransformerV3(**custom_config),
         )
+    elif backbone.lower() == "litept":
+        model = SegmentationHeadV2(
+            num_classes=4,
+            backbone_out_channels=72,
+            backbone=LitePT(**custom_config),
+        )
     else:
-        raise ValueError(f"Unknown backbone: {backbone}. Choose 'ptv3'")
+        raise ValueError(f"Unknown backbone: {backbone}. Choose 'ptv3' or 'litept'")
 
     torchsparse_statedict = {}
 
-    # Ptv3 state dict remapping for torchsparse++.
+    # Pointcept state dict remapping for torchsparse++ / nanoTSparse.
     # Weights have different names and and shape
-    # Bias is ok
-    if backbone.lower() == "ptv3":
+    # Bias are ok
+    if backbone.lower() == "ptv3" or backbone.lower() == "litept":
         print("PTV3 state dict remapping for Torchsparse++ / [nano]TS")
         for k, v in ckpt["state_dict"].items():
-            if "cpe.0.weight" in k or "conv.weight" in k:
+            if "cpe.0.weight" in k or "conv.weight" in k or "conv.0.weight" in k:
                 v = v.permute(3, 2, 1, 4, 0)
                 v = v.reshape(-1, v.shape[3], v.shape[4])
                 k = k.replace("weight", "kernel")

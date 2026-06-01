@@ -17,6 +17,7 @@ from plyfile import PlyData
 import pgeof
 import ptv3_3dfos
 import ptv3_3dfos.seghead
+import ptv3_3dfos.liteptv1m1_model
 from dendroptimized import voxelize
 
 try:
@@ -125,7 +126,7 @@ def main():
     parser.add_argument("--model_path", type=Path, help="Path to the model file (.pth)")
     parser.add_argument("--output_path", type=Path, default="seg_result.las", help="Output LAS file path")
     parser.add_argument("--grid_size", type=float, default=0.1, help="Voxel grid size")
-    parser.add_argument("--backbone", type=str, choices=["ptv3"], default="ptv3", help="Choose backbone: ptv3 only for now")
+    parser.add_argument("--backbone", type=str, choices=["ptv3", "litept"], default="ptv3", help="Choose backbone: ptv3 or litept")
 
     args = parser.parse_args()
 
@@ -145,6 +146,10 @@ def main():
         config = ptv3_3dfos.ptv3v1m1_model.model_config()
         config["enable_flash"] = bool(flash_attn)
         model = ptv3_3dfos.seghead.load(ckpt_path=args.model_path, custom_config=config, backbone="ptv3")
+    elif args.backbone == "litept":
+        config = ptv3_3dfos.liteptv1m1_model.model_config()
+        config["enable_flash"] = bool(flash_attn)
+        model = ptv3_3dfos.seghead.load(ckpt_path=args.model_path, custom_config=config, backbone="litept")
     else:
         print(f"{args.backbone} backbone is unknown")
         exit(1)
