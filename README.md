@@ -1,18 +1,24 @@
-# 3DFos
+![image](assets/3DFoS_logo.png)
+# 3DFoS
 
-Minimal standalone PTv3 / LitePT inference for forestry application, inspired by [sonata](https://github.com/facebookresearch/sonata) standalone.
 
-Please cite [PointCept](https://github.com/pointcept/pointcept), PTV3, Sonata and [LitePT](https://github.com/prs-eth/LitePT) if you use this work (see PointCept for details).
+Minimal PTV3 standalone for forestry application, inspired by [sonata](https://github.com/facebookresearch/sonata) standalone.
+## What it does
+This tool takes raw ground-based forest point clouds and performs semantic segmentation into four classes:
+*   **Ground:** Soil, leaf litter, and low-lying topography.
+*   **Understorey:** Shrubs, saplings, and other understorey elements.
+*   **Stems:** Main trunk architecture.
+*   **Canopy:** foliage and branches.
 
-PTV3-3DFos has been developed at the Centre of Wildfire Research of Swansea University (UK) in collaboration with the Research Institute of Biodiversity (CSIC, Spain) and the Department of Mining Exploitation of the University of Oviedo (Spain).
+![image](assets/3dfos_segmentation.png)
 
-Funding provided by the UK NERC project (NE/T001194/1):
+## Key Features
+*   **Performance:** Powered by the **Point Transformer V3 (PTV3)** architecture, the top performer in our 2026 benchmark among other state-of-the-art 3D deep learning architectures: [PointNeXt](https://github.com/guochengqian/openpoints), [SuperPoint Transformer](https://github.com/drprojects/superpoint_transformer) and [OA-CNN](https://github.com/pointcept/pointcept) (paper coming soon!).
+*   **High-Resolution:** Optimized at a **0.05 m voxel resolution**, allowing for the detection of thin stems and complex understorey textures.
+*   **Pre-Trained:** The underlying weights were trained on [SegmentedForests](https://doi.org/10.1093/forestry/cpaf062), a heterogeneous dataset of 14 plots, covering both **coniferous and broadleaf** stands across various maturity stages, as well as both **TLS** and **MLS** point clouds.
+*   **Zero-Setup Inference:** A pre-compiled executable is available.
 
-'Advancing 3D Fuel Mapping for Wildfire Behaviour and Risk Mitigation Modelling'
-
-and by the Spanish Knowledge Generation project (PID2021-126790NB-I00):
-
-‘Advancing carbon emission estimations from wildfires applying artificial intelligence to 3D terrestrial point clouds’.
+Please cite [PointCept](https://github.com/pointcept/pointcept), [PTV3](https://arxiv.org/abs/2312.10035) and [Sonata](https://github.com/facebookresearch/sonata) if you use this work (see PointCept for details).
 
 ## Changes vs sonata:
 
@@ -86,6 +92,17 @@ Point clouds can be either in las/laz or ply format.
 For now, only the weights for PTV3 and LitePT trained at a 0.05 m voxel size with full 3DFin features (i.e., distance to axis and elevation) are publicly available. This means you **must** first run 3DFin on your point cloud and then provide its output to 3DFos. Normal features are computed on the fly.
 
 You can adapt the voxel size. For example, you could run inference at a 0.01 m voxel size for a model trained at 0.05 m to lower runtime and resource consumption, at the cost of slightly reduced accuracy of the results.
+
+## Funding
+PTV3-3DFos has been developed at the Centre of Wildfire Research of Swansea University (UK) in collaboration with the Research Institute of Biodiversity (CSIC, Spain) and the Department of Mining Exploitation of the University of Oviedo (Spain).
+
+Funding provided by the UK NERC project (NE/T001194/1):
+
+'Advancing 3D Fuel Mapping for Wildfire Behaviour and Risk Mitigation Modelling'
+
+and by the Spanish Knowledge Generation project (PID2021-126790NB-I00):
+
+‘Advancing carbon emission estimations from wildfires applying artificial intelligence to 3D terrestrial point clouds’.
 
 ## TODOs:
 
