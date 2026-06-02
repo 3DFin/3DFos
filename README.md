@@ -2,7 +2,7 @@
 # 3DFoS
 
 
-Minimal PTV3 standalone for forestry application, inspired by [sonata](https://github.com/facebookresearch/sonata) standalone.
+Minimal PTv3 / LitePT standalone for forestry application, inspired by [sonata](https://github.com/facebookresearch/sonata) standalone.
 ## What it does
 This tool takes raw ground-based forest point clouds and performs semantic segmentation into four classes:
 *   **Ground:** Soil, leaf litter, and low-lying topography.
@@ -13,14 +13,14 @@ This tool takes raw ground-based forest point clouds and performs semantic segme
 ![image](assets/3dfos_segmentation.png)
 
 ## Key Features
-*   **Performance:** Powered by the **Point Transformer V3 (PTV3)** architecture, the top performer in our 2026 benchmark among other state-of-the-art 3D deep learning architectures: [PointNeXt](https://github.com/guochengqian/openpoints), [SuperPoint Transformer](https://github.com/drprojects/superpoint_transformer) and [OA-CNN](https://github.com/pointcept/pointcept) (paper coming soon!).
+*   **Performance:** Powered by the **Point Transformer V3 (PTV3)** architecture, the top performer in our 2026 benchmark among other state-of-the-art 3D deep learning architectures: [PointNeXt](https://github.com/guochengqian/openpoints), [SuperPoint Transformer](https://github.com/drprojects/superpoint_transformer) and [OA-CNN](https://github.com/pointcept/pointcept) (paper coming soon!). We additionally provide a lighter model based on [LitePT-S](https://litept.github.io) for even faster and resource-friendly inference. 
 *   **High-Resolution:** Optimized at a **0.05 m voxel resolution**, allowing for the detection of thin stems and complex understorey textures.
 *   **Pre-Trained:** The underlying weights were trained on [SegmentedForests](https://doi.org/10.1093/forestry/cpaf062), a heterogeneous dataset of 14 plots, covering both **coniferous and broadleaf** stands across various maturity stages, as well as both **TLS** and **MLS** point clouds.
-*   **Zero-Setup Inference:** A pre-compiled executable is available.
+*   **(Near) Zero-Setup Inference:** A simple [uv setup](##Installation) is available with a pre-compiled executable and CC plugin coming soon.
 
 Please cite [PointCept](https://github.com/pointcept/pointcept), [PTV3](https://arxiv.org/abs/2312.10035) and [Sonata](https://github.com/facebookresearch/sonata) if you use this work (see PointCept for details).
 
-## Changes vs sonata:
+## Changes vs sonata standalone:
 
 - Added a "clean" `uv` packaging
 - Removed `torch_scatter` dependencies (replaced scatter from `PYG` by pure `torch` calls, simplify dependencies).
@@ -29,9 +29,9 @@ Please cite [PointCept](https://github.com/pointcept/pointcept), [PTV3](https://
 - Use `torch` built-in `SDPA` to levrage efficient and memory friendly attention kernels. This removes the need of `flash-attn` package.
 - Added a dedicated inference demo/script for 3DFos/SegmentedForest datasets.
 
-## Installation:
+## Installation
 
-### Pure CPU inference: 
+### Pure CPU inference
 
 ```
 uv sync --extra cpu
