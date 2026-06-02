@@ -18,24 +18,40 @@ and by the Spanish Knowledge Generation project (PID2021-126790NB-I00):
 
 - Added a "clean" `uv` packaging
 - Removed `torch_scatter` dependencies (replaced scatter from `PYG` by pure `torch` calls, simplify dependencies).
-- Replaced `spconv` by `Torchsparse++` / `nanoTSparse` for sparse convolution. nanoTSparse is not affected by `CUMM` bugs (like https://github.com/FindDefinition/cumm/issues/26) and is easier
-  to package / maintain. We do not provide yet pre compiled version of `nanoTSparse`, you may need a `C/C++` and `CUDA` compiler in order to run this code.
+- Replaced `spconv` by `Torchsparse++` / `nanoTSparse` for sparse convolution. `nanoTSparse` is not affected by `CUMM` bugs (like https://github.com/FindDefinition/cumm/issues/26) and is easier
+  to package / maintain. We provide a precompiled version of `nanoTSparse` for CPU. For `CUDA` you need a `C/C++` and `CUDA` compiler/SDK.
 - Use `torch` built-in `SDPA` to levrage efficient and memory friendly attention kernels. This removes the need of `flash-attn` package.
 - Added a dedicated inference demo/script for 3DFos/SegmentedForest datasets.
 
 ## Installation:
 
+### Pure CPU inference: 
+
 ```
-uv sync --extra cu130 [or --extra cu128 or --extra cpu]
+uv sync --extra cpu
+```
+
+### CUDA/GPU 
+
+Two versions of CUDA are supported: 12.8 (cu128) and 13.0 (cu130).
+
+```
+uv sync --extra cu130 
 ```
 
 then
 
 ```
-uv sync --extra cu130 --extra nanotsparse
+uv sync --extra cu130 --extra nanotsparsecuda
 ```
 
-on Windows system, it might be necessary to set `DUSTUTILS_USE_SDK` env variable in order to compile `nanoTSparse`.
+If needed (previous version of `nanoTSparse` / `3DFos` installed) you can force full clean recompilation of `nanoTSparse`.
+
+```
+uv sync --extra cu130 --extra nanotsparsecuda --no-cache --reinstall-package nanotsparse
+```
+
+On Windows system, it might be necessary to set `DUSTUTILS_USE_SDK` env variable in order to compile `nanoTSparse`.
 
 i.e on Windows Developer PowerShell` terminal session. 
 
