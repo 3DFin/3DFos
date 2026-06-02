@@ -1,22 +1,26 @@
 ![image](assets/3DFoS_logo.png)
+
 # 3DFoS
 
-
 Minimal PTv3 / LitePT standalone for forestry application, inspired by [sonata](https://github.com/facebookresearch/sonata) standalone.
+
 ## What it does
+
 This tool takes raw ground-based forest point clouds and performs semantic segmentation into four classes:
-*   **Ground:** Soil, leaf litter, and low-lying topography.
-*   **Understorey:** Shrubs, saplings, and other understorey elements.
-*   **Stems:** Main trunk architecture.
-*   **Canopy:** foliage and branches.
+
+- **Ground:** Soil, leaf litter, and low-lying topography.
+- **Understorey:** Shrubs, saplings, and other understorey elements.
+- **Stems:** Main trunk architecture.
+- **Canopy:** foliage and branches.
 
 ![image](assets/3dfos_segmentation.png)
 
 ## Key Features
-*   **Performance:** Powered by the **Point Transformer V3 (PTV3)** architecture, the top performer in our 2026 benchmark among other state-of-the-art 3D deep learning architectures: [PointNeXt](https://github.com/guochengqian/openpoints), [SuperPoint Transformer](https://github.com/drprojects/superpoint_transformer) and [OA-CNN](https://github.com/pointcept/pointcept) (paper coming soon!). We additionally provide a lighter model based on [LitePT-S](https://litept.github.io) for even faster and resource-friendly inference. 
-*   **High-Resolution:** Optimized at a **0.05 m voxel resolution**, allowing for the detection of thin stems and complex understorey textures.
-*   **Pre-Trained:** The underlying weights were trained on [SegmentedForests](https://doi.org/10.1093/forestry/cpaf062), a heterogeneous dataset of 14 plots, covering both **coniferous and broadleaf** stands across various maturity stages, as well as both **TLS** and **MLS** point clouds.
-*   **(Near) Zero-Setup Inference:** A simple [uv setup](##Installation) is available with a pre-compiled executable and CC plugin coming soon.
+
+- **Performance:** Powered by the **Point Transformer V3 (PTV3)** architecture, the top performer in our 2026 benchmark among other state-of-the-art 3D deep learning architectures: [PointNeXt](https://github.com/guochengqian/openpoints), [SuperPoint Transformer](https://github.com/drprojects/superpoint_transformer) and [OA-CNN](https://github.com/pointcept/pointcept) (paper coming soon!). We additionally provide a lighter model based on [LitePT-S](https://litept.github.io) for even faster and resource-friendly inference.
+- **High-Resolution:** Optimized at a **0.05 m voxel resolution**, allowing for the detection of thin stems and complex understorey textures.
+- **Pre-Trained:** The underlying weights were trained on [SegmentedForests](https://doi.org/10.1093/forestry/cpaf062), a heterogeneous dataset of 14 plots, covering both **coniferous and broadleaf** stands across various maturity stages, as well as both **TLS** and **MLS** point clouds.
+- **(Near) Zero-Setup Inference:** A simple [uv setup](##Installation) is available with a pre-compiled executable and CC plugin coming soon.
 
 Please cite [PointCept](https://github.com/pointcept/pointcept), [PTV3](https://arxiv.org/abs/2312.10035) and [Sonata](https://github.com/facebookresearch/sonata) if you use this work (see PointCept for details).
 
@@ -37,12 +41,12 @@ Please cite [PointCept](https://github.com/pointcept/pointcept), [PTV3](https://
 uv sync --extra cpu
 ```
 
-### CUDA/GPU 
+### CUDA/GPU
 
 Two versions of CUDA are supported: 12.8 (cu128) and 13.0 (cu130).
 
 ```
-uv sync --extra cu130 
+uv sync --extra cu130
 ```
 
 then
@@ -57,12 +61,12 @@ If needed (previous version of `nanoTSparse` / `3DFos` installed) you can force 
 uv sync --extra cu130 --extra nanotsparsecuda --no-cache --reinstall-package nanotsparse
 ```
 
-On Windows system, it might be necessary to set `DUSTUTILS_USE_SDK` env variable in order to compile `nanoTSparse`.
+on Windows system, it might be necessary to set `DISTUTILS_USE_SDK` env variable in order to compile `nanoTSparse`.
 
-i.e on Windows Developer PowerShell` terminal session. 
+i.e on Windows Developer PowerShell` terminal session.
 
 ```
-$env:DUSTUTILS_USE_SDK = 1
+$env:DISTUTILS_USE_SDK = 1
 uv sync --extra cu130 --extra nanotsparse
 ```
 
@@ -94,6 +98,7 @@ For now, only the weights for PTV3 and LitePT trained at a 0.05 m voxel size wit
 You can adapt the voxel size. For example, you could run inference at a 0.01 m voxel size for a model trained at 0.05 m to lower runtime and resource consumption, at the cost of slightly reduced accuracy of the results.
 
 ## Funding
+
 PTV3-3DFos has been developed at the Centre of Wildfire Research of Swansea University (UK) in collaboration with the Research Institute of Biodiversity (CSIC, Spain) and the Department of Mining Exploitation of the University of Oviedo (Spain).
 
 Funding provided by the UK NERC project (NE/T001194/1):
@@ -107,6 +112,6 @@ and by the Spanish Knowledge Generation project (PID2021-126790NB-I00):
 ## TODOs:
 
 - Provide a pixi file in order to simplify installation / compilation?
-- Use point closest to the voxel center.
-- Add a spatial tiling mechanism? (First pass of a Lite NN `binary seg` + PCA for overlapping tiles + inference + Logit mean between tiles)
+- Use point closest to the voxel center for better accuracy.
+- Add a spatial tiling mechanism? (First pass of a Lite NN `binary seg` + PCA for overlapping tiles + inference + Logit average between tiles)
 - Use torch varlen.
