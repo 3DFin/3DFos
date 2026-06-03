@@ -24,7 +24,7 @@ This tool takes raw ground-based forest point clouds and performs semantic segme
 
 Please cite [PointCept](https://github.com/pointcept/pointcept), [PTV3](https://arxiv.org/abs/2312.10035) and [Sonata](https://github.com/facebookresearch/sonata) if you use this work (see PointCept for details).
 
-## Changes vs sonata standalone:
+## Changes vs sonata standalone
 
 - Added a "clean" `uv` packaging
 - Removed `torch_scatter` dependencies (replaced scatter from `PYG` by pure `torch` calls, simplify dependencies).
@@ -67,14 +67,14 @@ i.e on Windows Developer PowerShell` terminal session.
 
 ```
 $env:DISTUTILS_USE_SDK = 1
-uv sync --extra cu130 --extra nanotsparse
+uv sync --extra cu130 --extra nanotsparsecuda
 ```
 
 Flash attention lowers memory usage and improves runtime, but it's not mandatory.
 if you want to use `flash-attn` package, you have to run this command **AFTER** the first one.
 
 ```
-uv sync --extra cu130 --extra nanotsparse --extra flash-attn
+uv sync --extra cu130 --extra nanotsparsecuda --extra flash-attn
 ```
 
 Flash attention is only compatible with NVIDIA cards that have a compute capability of 8.0+.
@@ -99,7 +99,7 @@ You can adapt the voxel size. For example, you could run inference at a 0.01 m v
 
 ## Funding
 
-PTV3-3DFos has been developed at the Centre of Wildfire Research of Swansea University (UK) in collaboration with the Research Institute of Biodiversity (CSIC, Spain) and the Department of Mining Exploitation of the University of Oviedo (Spain).
+3DFos has been developed at the Centre of Wildfire Research of Swansea University (UK) in collaboration with the Research Institute of Biodiversity (CSIC, Spain) and the Department of Mining Exploitation of the University of Oviedo (Spain).
 
 Funding provided by the UK NERC project (NE/T001194/1):
 
