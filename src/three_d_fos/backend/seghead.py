@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 from three_d_fos.backend.liteptv1m1_model import LitePT
 from three_d_fos.backend.ptv3v1m1_model import PointTransformerV3

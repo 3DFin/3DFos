@@ -28,9 +28,7 @@ def read_las(filepath: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     xyz = np.vstack((las.x, las.y, las.z)).T
 
     if not hasattr(las, "dist_axes") or not hasattr(las, "Z0"):
-        raise ValueError(
-            "LAS file missing required scalar fields: 'dist_axes' and 'Z0'."
-        )
+        raise ValueError("LAS file missing required scalar fields: 'dist_axes' and 'Z0'.")
 
     z0 = las.Z0
     dist_axes = las.dist_axes

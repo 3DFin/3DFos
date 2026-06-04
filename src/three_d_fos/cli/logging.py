@@ -17,7 +17,8 @@ level_dict = {
 
 
 class LoggingColor(logging.Formatter):
-    """Formatter for Python Logging (inject colors """
+    """Formatter for Python Logging (inject colors"""
+
     def format(self, record):
         level_letter = level_dict.get(record.levelno, "?")
         code = colors_dict.get(level_letter)

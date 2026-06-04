@@ -18,13 +18,13 @@ from three_d_fos.backend import (
 )
 
 __all__ = [
-    "ptv3v1m1_model",
+    "inference",
     "liteptv1m1_model",
     "module",
-    "structure",
-    "transform",
+    "ptv3v1m1_model",
     "registry",
     "seghead",
+    "structure",
+    "transform",
     "utils",
-    "inference",
 ]

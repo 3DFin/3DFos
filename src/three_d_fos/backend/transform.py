@@ -5,8 +5,6 @@ Author: Xiaoyang Wu (xiaoyang.wu.cs@gmail.com)
 Please cite our work if the code is helpful to you.
 """
 
-import copy
-import numbers
 from collections.abc import Mapping, Sequence
 
 import numpy as np
@@ -18,7 +16,7 @@ TRANSFORMS = Registry("transforms")
 
 
 @TRANSFORMS.register_module()
-class Collect(object):
+class Collect:
     def __init__(self, keys, offset_keys_dict=None, **kwargs):
         """
         e.g. Collect(keys=[coord], feat_keys=[coord, color])
@@ -45,7 +43,7 @@ class Collect(object):
 
 
 @TRANSFORMS.register_module()
-class ToTensor(object):
+class ToTensor:
     def __call__(self, data):
         if isinstance(data, torch.Tensor):
             return data
@@ -72,7 +70,7 @@ class ToTensor(object):
             raise TypeError(f"type {type(data)} cannot be converted to tensor.")
 
 
-class Compose(object):
+class Compose:
     def __init__(self, cfg=None):
         self.cfg = cfg if cfg is not None else []
         self.transforms = []

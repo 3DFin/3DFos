@@ -15,9 +15,7 @@ DIST_AXES_SCALE = 15.0
 Z0_SCALE = 30.0
 
 
-def normalize_scalar_fields(
-    dist_axes: np.ndarray, z0: np.ndarray
-) -> tuple[np.ndarray, np.ndarray]:
+def normalize_scalar_fields(dist_axes: np.ndarray, z0: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Normalize 3DFin scalar fields to [0, 1] range."""
     dist_axes = np.clip(dist_axes / DIST_AXES_SCALE, 0.0, 1.0)
     z0 = np.clip(z0 / Z0_SCALE, 0.0, 1.0)
@@ -29,9 +27,7 @@ def preprocess(
 ) -> tuple[dict, np.ndarray, np.ndarray]:
     """Voxelize and compute normals."""
     xyz = xyz.astype(np.float64)
-    voxelated_cloud, remap_ids, sample_ids = voxelize(
-        xyz, grid_size, grid_size, 5, with_n_points=False, verbose=False
-    )
+    voxelated_cloud, remap_ids, sample_ids = voxelize(xyz, grid_size, grid_size, 5, with_n_points=False, verbose=False)
 
     # Resample the data according to the voxelization
     global_shift = np.min(xyz, axis=0)
@@ -54,9 +50,7 @@ def preprocess(
     features = {
         "grid_size": grid_size,
         "grid_coord": grid_coords,
-        "coord": (xyz_sampled - global_shift).astype(
-            np.float32
-        ),  # shift cloud to avoid quantization / stabilize
+        "coord": (xyz_sampled - global_shift).astype(np.float32),  # shift cloud to avoid quantization / stabilize
         "normal": normals.astype(np.float32),
         "z0": np.expand_dims(z0[sample_ids], axis=1).astype(np.float32),
         "dist_axes": np.expand_dims(dist_axes[sample_ids], axis=1).astype(np.float32),

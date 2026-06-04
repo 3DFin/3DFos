@@ -19,6 +19,11 @@ dependencies = [
     "plyfile>=1.1.2",
 ]
 
+[dependency-groups]
+dev = [
+    "ruff",
+]
+
 [project.optional-dependencies]
 flash-attn = ["flash-attn==2.8.3"]
 nanotsparsecuda = ["nanotsparse>=2.2.0"]
@@ -77,6 +82,21 @@ explicit = true
 name = "pytorch-cu128"
 url = "https://download.pytorch.org/whl/cu128"
 explicit = true
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501", "N806", "N803", "N812", "E402"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = ["F401"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
 
 [project.scripts]
 3DFos = "three_d_fos.cli.main:main"

@@ -7,17 +7,16 @@ Please cite our work if the code is helpful to you.
 
 import os
 import random
+from datetime import datetime
+
 import numpy as np
 import torch
-import torch.backends.cudnn as cudnn
-from datetime import datetime
+from torch.backends import cudnn
 
 
 @torch.no_grad()
 def offset2bincount(offset):
-    return torch.diff(
-        offset, prepend=torch.tensor([0], device=offset.device, dtype=torch.long)
-    )
+    return torch.diff(offset, prepend=torch.tensor([0], device=offset.device, dtype=torch.long))
 
 
 @torch.no_grad()
@@ -28,9 +27,7 @@ def bincount2offset(bincount):
 @torch.no_grad()
 def offset2batch(offset):
     bincount = offset2bincount(offset)
-    return torch.arange(
-        len(bincount), device=offset.device, dtype=torch.long
-    ).repeat_interleave(bincount)
+    return torch.arange(len(bincount), device=offset.device, dtype=torch.long).repeat_interleave(bincount)
 
 
 @torch.no_grad()
@@ -39,11 +36,7 @@ def batch2offset(batch):
 
 
 def get_random_seed():
-    seed = (
-        os.getpid()
-        + int(datetime.now().strftime("%S%f"))
-        + int.from_bytes(os.urandom(2), "big")
-    )
+    seed = os.getpid() + int(datetime.now().strftime("%S%f")) + int.from_bytes(os.urandom(2), "big")
     return seed
 
 

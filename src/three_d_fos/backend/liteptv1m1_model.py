@@ -5,15 +5,13 @@ Author: Yuanwen Yue (yuayue@ethz.ch)
 Please cite our work if the code is helpful to you.
 """
 
-import math
 from functools import partial
 
 import torch
-import torch.nn as nn
 from addict import Dict
 from nanotsparse.nn import Conv3d
 from nanotsparse.nn import functional as F
-from torch.nn.attention import SDPBackend, sdpa_kernel
+from torch import nn
 from torch.nn.functional import scaled_dot_product_attention
 
 # In torchsparse / nanotsparse, we change the dataflow for CPU as it's ne only available solution
@@ -31,14 +29,14 @@ try:
 except ImportError:
     flash_attn = None
 
-from .module import PointModule, PointSequential
-from .structure import Point
-from .utils import offset2bincount
+from three_d_fos.backend.module import PointModule, PointSequential
+from three_d_fos.backend.structure import Point
+from three_d_fos.backend.utils import offset2bincount
 
 try:
     import pointrope as _kernels
 
-    class PointROPE_func(torch.autograd.Function):
+    class PointROPEFunc(torch.autograd.Function):
         @staticmethod
         def forward(ctx, tokens, positions, base, F0=1):
             ctx.save_for_backward(positions)
@@ -65,10 +63,10 @@ try:
         def forward(self, tokens, positions):
             tokens = tokens.transpose(1, 2).contiguous()
             positions = positions.contiguous()
-            tokens = PointROPE_func.apply(tokens, positions, self.base, self.F0)
+            tokens = PointROPEFunc.apply(tokens, positions, self.base, self.F0)
             return tokens.transpose(1, 2).contiguous()
 
-except Exception as e:
+except Exception:
     # print(
     #    f"[PointROPE] CUDA implementation unavailable ({type(e).__name__}: {e}). "
     #    "Using slower Pytorch fallback."
@@ -83,9 +81,7 @@ except Exception as e:
 
         def get_cos_sin(self, D, seq_len, device, dtype):
             if (D, seq_len, device, dtype) not in self.cache:
-                inv_freq = self.F0 / (
-                    self.base ** (torch.arange(0, D, 2).float().to(device) / D)
-                )
+                inv_freq = self.F0 / (self.base ** (torch.arange(0, D, 2).float().to(device) / D))
                 t = torch.arange(seq_len, device=device, dtype=inv_freq.dtype)
                 freqs = torch.einsum("i,j->ij", t, inv_freq).to(dtype)
                 freqs = torch.cat((freqs, freqs), dim=-1)
@@ -113,19 +109,13 @@ except Exception as e:
             output:
                 * tokens after appplying PointROPE (batch_size x nheads x ntokens x dim)
             """
-            assert tokens.size(3) % 3 == 0, (
-                "number of dimensions should be a multiple of three"
-            )
+            assert tokens.size(3) % 3 == 0, "number of dimensions should be a multiple of three"
             D = tokens.size(3) // 3
             assert positions.ndim == 3 and positions.shape[-1] == 3  # Batch, Seq, 3
-            if max_seqlen == None:
-                cos, sin = self.get_cos_sin(
-                    D, int(positions.max()) + 1, tokens.device, tokens.dtype
-                )
+            if max_seqlen is None:
+                cos, sin = self.get_cos_sin(D, int(positions.max()) + 1, tokens.device, tokens.dtype)
             else:  # use dynamic sequence length according to batched input
-                cos, sin = self.get_cos_sin(
-                    D, max_seqlen + 1, tokens.device, tokens.dtype
-                )
+                cos, sin = self.get_cos_sin(D, max_seqlen + 1, tokens.device, tokens.dtype)
             # split features into three parts along the feature dimension, and apply rope1d on each subspace
             x, y, z = tokens.chunk(3, dim=-1)
             x = self.apply_rope1d(x, positions[:, :, 0], cos, sin)
@@ -173,11 +163,7 @@ class PointROPEAttention(PointModule):
         pad_key = "pad"
         unpad_key = "unpad"
         cu_seqlens_key = "cu_seqlens_key"
-        if (
-            pad_key not in point.keys()
-            or unpad_key not in point.keys()
-            or cu_seqlens_key not in point.keys()
-        ):
+        if pad_key not in point.keys() or unpad_key not in point.keys() or cu_seqlens_key not in point.keys():
             offset = point.offset
             bincount = offset2bincount(offset)
             bincount_pad = (
@@ -199,16 +185,14 @@ class PointROPEAttention(PointModule):
             for i in range(len(offset)):
                 unpad[_offset[i] : _offset[i + 1]] += _offset_pad[i] - _offset[i]
                 if bincount[i] != bincount_pad[i]:
-                    pad[
-                        _offset_pad[i + 1]
-                        - self.patch_size
-                        + (bincount[i] % self.patch_size) : _offset_pad[i + 1]
-                    ] = pad[
-                        _offset_pad[i + 1]
-                        - 2 * self.patch_size
-                        + (bincount[i] % self.patch_size) : _offset_pad[i + 1]
-                        - self.patch_size
-                    ]
+                    pad[_offset_pad[i + 1] - self.patch_size + (bincount[i] % self.patch_size) : _offset_pad[i + 1]] = (
+                        pad[
+                            _offset_pad[i + 1] - 2 * self.patch_size + (bincount[i] % self.patch_size) : _offset_pad[
+                                i + 1
+                            ]
+                            - self.patch_size
+                        ]
+                    )
                 pad[_offset_pad[i] : _offset_pad[i + 1]] -= _offset_pad[i] - _offset[i]
                 cu_seqlens.append(
                     torch.arange(
@@ -221,9 +205,7 @@ class PointROPEAttention(PointModule):
                 )
             point[pad_key] = pad
             point[unpad_key] = unpad
-            point[cu_seqlens_key] = nn.functional.pad(
-                torch.concat(cu_seqlens), (0, 1), value=_offset_pad[-1]
-            )
+            point[cu_seqlens_key] = nn.functional.pad(torch.concat(cu_seqlens), (0, 1), value=_offset_pad[-1])
         return point[pad_key], point[unpad_key], point[cu_seqlens_key]
 
     def forward(self, point):
@@ -459,9 +441,7 @@ class GridPooling(PointModule):
                 rounding_mode="trunc",
             ).int()
         else:
-            raise AssertionError(
-                "[gird_coord] or [coord, grid_size] should be include in the Point"
-            )
+            raise AssertionError("[gird_coord] or [coord, grid_size] should be include in the Point")
         grid_coord = torch.div(grid_coord, self.stride, rounding_mode="trunc")
         grid_coord = grid_coord | point.batch.view(-1, 1) << 48
         grid_coord, cluster, counts = torch.unique(
@@ -479,12 +459,8 @@ class GridPooling(PointModule):
         # head_indices of each cluster, for reduce attr e.g. code, batch
         head_indices = indices[idx_ptr[:-1]]
         point_dict = Dict(
-            feat=torch.segment_reduce(
-                self.proj(point.feat)[indices], offsets=idx_ptr, reduce=self.reduce
-            ),
-            coord=torch.segment_reduce(
-                point.coord[indices], offsets=idx_ptr, reduce="mean"
-            ),
+            feat=torch.segment_reduce(self.proj(point.feat)[indices], offsets=idx_ptr, reduce=self.reduce),
+            coord=torch.segment_reduce(point.coord[indices], offsets=idx_ptr, reduce="mean"),
             grid_coord=grid_coord,
             batch=point.batch[head_indices],
         )
@@ -501,18 +477,11 @@ class GridPooling(PointModule):
         if "split" in point.keys():
             point_dict["split"] = point.split
         if "color" in point.keys():
-            point_dict["color"] = torch.segment_reduce(
-                point.color[indices], offsets=idx_ptr, reduce="mean"
-            )
+            point_dict["color"] = torch.segment_reduce(point.color[indices], offsets=idx_ptr, reduce="mean")
         if "grid_size" in point.keys():
             point_dict["grid_size"] = point.grid_size * self.stride
         if "mask" in point.keys():
-            point_dict["mask"] = (
-                torch.segment_reduce(
-                    point.mask[indices].float(), offsets=idx_ptr, reduce="mean"
-                )
-                > 0.5
-            )
+            point_dict["mask"] = torch.segment_reduce(point.mask[indices].float(), offsets=idx_ptr, reduce="mean") > 0.5
 
         if self.traceable:
             point_dict["pooling_inverse"] = cluster
@@ -524,9 +493,7 @@ class GridPooling(PointModule):
             point = self.act(point)
 
         if self.re_serialization:
-            point.serialization(
-                order=self.serialization_order, shuffle_orders=self.shuffle_orders
-            )
+            point.serialization(order=self.serialization_order, shuffle_orders=self.shuffle_orders)
         point.sparsify()
         return point
 
@@ -672,14 +639,10 @@ class LitePT(PointModule):
         )
 
         # encoder
-        enc_drop_path = [
-            x.item() for x in torch.linspace(0, drop_path, sum(enc_depths))
-        ]
+        enc_drop_path = [x.item() for x in torch.linspace(0, drop_path, sum(enc_depths))]
         self.enc = PointSequential()
         for s in range(self.num_stages):
-            enc_drop_path_ = enc_drop_path[
-                sum(enc_depths[:s]) : sum(enc_depths[: s + 1])
-            ]
+            enc_drop_path_ = enc_drop_path[sum(enc_depths[:s]) : sum(enc_depths[: s + 1])]
             enc = PointSequential()
             if s > 0:
                 enc.add(
@@ -723,15 +686,11 @@ class LitePT(PointModule):
 
         # decoder
         if not self.enc_mode:
-            dec_drop_path = [
-                x.item() for x in torch.linspace(0, drop_path, sum(dec_depths))
-            ]
+            dec_drop_path = [x.item() for x in torch.linspace(0, drop_path, sum(dec_depths))]
             self.dec = PointSequential()
             dec_channels = list(dec_channels) + [enc_channels[-1]]
             for s in reversed(range(self.num_stages - 1)):
-                dec_drop_path_ = dec_drop_path[
-                    sum(dec_depths[:s]) : sum(dec_depths[: s + 1])
-                ]
+                dec_drop_path_ = dec_drop_path[sum(dec_depths[:s]) : sum(dec_depths[: s + 1])]
                 dec_drop_path_.reverse()
                 dec = PointSequential()
                 dec.add(
