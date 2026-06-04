@@ -79,4 +79,4 @@ url = "https://download.pytorch.org/whl/cu128"
 explicit = true
 
 [project.scripts]
-3DFos = "three_d_fos.inference:main" # inference tailored for 3DFin
+3DFos = "three_d_fos.cli.main:main"

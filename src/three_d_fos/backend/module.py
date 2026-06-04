@@ -7,13 +7,13 @@ Please cite our work if the code is helpful to you.
 """
 
 import sys
-import torch.nn as nn
 from collections import OrderedDict
 
+import torch.nn as nn
 from nanotsparse.nn import Conv3d
 from nanotsparse.tensor import SparseTensor
 
-from three_d_fos.structure import Point
+from three_d_fos.backend.structure import Point
 
 
 class PointModule(nn.Module):

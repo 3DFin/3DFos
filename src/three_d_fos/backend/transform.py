@@ -5,13 +5,14 @@ Author: Xiaoyang Wu (xiaoyang.wu.cs@gmail.com)
 Please cite our work if the code is helpful to you.
 """
 
+import copy
 import numbers
+from collections.abc import Mapping, Sequence
+
 import numpy as np
 import torch
-import copy
-from collections.abc import Sequence, Mapping
 
-from three_d_fos.registry import Registry
+from three_d_fos.backend.registry import Registry
 
 TRANSFORMS = Registry("transforms")
 
@@ -42,6 +43,7 @@ class Collect(object):
             data[name] = torch.cat([data_dict[key].float() for key in keys], dim=1)
         return data
 
+
 @TRANSFORMS.register_module()
 class ToTensor(object):
     def __call__(self, data):
@@ -69,6 +71,7 @@ class ToTensor(object):
         else:
             raise TypeError(f"type {type(data)} cannot be converted to tensor.")
 
+
 class Compose(object):
     def __init__(self, cfg=None):
         self.cfg = cfg if cfg is not None else []
@@ -80,6 +83,7 @@ class Compose(object):
         for t in self.transforms:
             data_dict = t(data_dict)
         return data_dict
+
 
 def transform_config():
     config = [

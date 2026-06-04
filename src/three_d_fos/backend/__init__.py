@@ -1,10 +1,3 @@
-"""
-3DFos package
-
-Main package for 3D forestry segmentation.
-"""
-
-# Re-export backend modules for backward compatibility
 from three_d_fos.backend import (
     inference,
     liteptv1m1_model,
@@ -23,8 +16,8 @@ __all__ = [
     "module",
     "structure",
     "transform",
+    "utils",
     "registry",
     "seghead",
-    "utils",
     "inference",
 ]

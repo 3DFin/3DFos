@@ -6,21 +6,17 @@ Please cite our work if the code is helpful to you.
 """
 
 import math
-
 from functools import partial
 
 import torch
 import torch.nn as nn
-import torch_geometric
 from addict import Dict
-
+from nanotsparse.nn import Conv3d
+from nanotsparse.nn import functional as F
 from torch.nn.attention import SDPBackend, sdpa_kernel
 from torch.nn.functional import scaled_dot_product_attention
 
-from nanotsparse.nn import Conv3d
-from nanotsparse.nn import functional as F
-
-#In torchsparse / nanotsparse, we change the dataflow for CPU as it's ne only available solution
+# In torchsparse / nanotsparse, we change the dataflow for CPU as it's ne only available solution
 config = F.conv_config.get_default_conv_config()
 if not torch.cuda.is_available():
     config.dataflow = F.Dataflow.GatherScatter
@@ -43,7 +39,6 @@ try:
     import pointrope as _kernels
 
     class PointROPE_func(torch.autograd.Function):
-
         @staticmethod
         def forward(ctx, tokens, positions, base, F0=1):
             ctx.save_for_backward(positions)
@@ -74,13 +69,12 @@ try:
             return tokens.transpose(1, 2).contiguous()
 
 except Exception as e:
-    #print(
+    # print(
     #    f"[PointROPE] CUDA implementation unavailable ({type(e).__name__}: {e}). "
     #    "Using slower Pytorch fallback."
-    #)
+    # )
 
     class PointROPE(torch.nn.Module):
-
         def __init__(self, freq=100.0, F0=1.0):
             super().__init__()
             self.base = freq
@@ -119,9 +113,9 @@ except Exception as e:
             output:
                 * tokens after appplying PointROPE (batch_size x nheads x ntokens x dim)
             """
-            assert (
-                tokens.size(3) % 3 == 0
-            ), "number of dimensions should be a multiple of three"
+            assert tokens.size(3) % 3 == 0, (
+                "number of dimensions should be a multiple of three"
+            )
             D = tokens.size(3) // 3
             assert positions.ndim == 3 and positions.shape[-1] == 3  # Batch, Seq, 3
             if max_seqlen == None:
@@ -268,15 +262,14 @@ class PointROPEAttention(PointModule):
             dim=1,
         )  # [N, 3, H, head_dim]
 
-
         if not self.enable_flash and not flash_attn:
-                # compute qkv
-                qkv = qkv.view(-1, K, 3, H, C // H)
-                q = qkv[:, :, 0].transpose(1, 2)
-                k = qkv[:, :, 1].transpose(1, 2)
-                v = qkv[:, :, 2].transpose(1, 2)
-                feat = scaled_dot_product_attention(q, k, v,scale=self.scale)
-                feat = feat.transpose(1, 2).reshape(-1, C)
+            # compute qkv
+            qkv = qkv.view(-1, K, 3, H, C // H)
+            q = qkv[:, :, 0].transpose(1, 2)
+            k = qkv[:, :, 1].transpose(1, 2)
+            v = qkv[:, :, 2].transpose(1, 2)
+            feat = scaled_dot_product_attention(q, k, v, scale=self.scale)
+            feat = feat.transpose(1, 2).reshape(-1, C)
         else:
             feat = flash_attn.flash_attn_varlen_qkvpacked_func(
                 qkv_rotated,
@@ -394,7 +387,6 @@ class Block(PointModule):
                 )
             )
 
-
     def forward(self, point: Point):
         if self.enable_conv:
             shortcut = point.feat
@@ -491,7 +483,7 @@ class GridPooling(PointModule):
                 self.proj(point.feat)[indices], offsets=idx_ptr, reduce=self.reduce
             ),
             coord=torch.segment_reduce(
-                point.coord[indices],  offsets=idx_ptr, reduce="mean"
+                point.coord[indices], offsets=idx_ptr, reduce="mean"
             ),
             grid_coord=grid_coord,
             batch=point.batch[head_indices],
