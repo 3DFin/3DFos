@@ -5,7 +5,7 @@ build-backend = "uv_build"
 [project]
 name = "3DFos"
 version = "0.1.0"
-description = "Forestry standalone inference "
+description = "Forestry Inference based on PointCept models"
 requires-python = ">=3.12.0,<3.14.0"
 readme = "README.md"
 
@@ -42,6 +42,9 @@ cu128 = [
     "torch~=2.11.0",
     "torch-geometric>=2.6.1",
     "torchvision~=0.26.0",
+]
+gui = [
+    "pyside6>=6.8.1",
 ]
 
 [tool.uv.build-backend]
@@ -98,5 +101,17 @@ ignore = ["E501", "N806", "N803", "N812", "E402"]
 quote-style = "double"
 indent-style = "space"
 
+[tool.ruff.lint.isort]
+known-first-party = ["three_d_fos"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+# General entry points
 [project.scripts]
 3DFos = "three_d_fos.cli.main:main"
+3DFos-gui = "three_d_fos.gui.app:main"
+
+# Entry point for CloudCompare plugin
+[project.entry-points."cloudcompare.plugins"]
+3DFos = "three_d_fos.cloudcompare.plugin:ThreeDFosCC"

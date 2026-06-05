@@ -7,8 +7,8 @@ import torch
 
 import three_d_fos
 from three_d_fos.backend import inference as backend_inference
-from three_d_fos.cli import io
 from three_d_fos.cli.logging import setup_logging
+from three_d_fos.io import FilePointCloudDestination, FilePointCloudSource, SegmentationResult
 
 logger = logging.getLogger(__name__)
 setup_logging()
@@ -67,30 +67,32 @@ def main() -> None:
     logger.info("Model loaded in %.2f seconds.", time.time() - start_model)
 
     start_data = time.time()
-    suffix = args.input_path.suffix.lower()
+    logger.info("Loading data from %s...", args.input_path)
 
-    if suffix == ".ply":
-        xyz, z0, dist_axes = io.read_ply(args.input_path)
-    elif suffix in (".las", ".laz"):
-        xyz, z0, dist_axes = io.read_las(args.input_path)
-    else:
-        raise ValueError(f"Unsupported file extension '{suffix}'. Supported: .ply, .las, .laz")
+    # Use abstracted source
+    source = FilePointCloudSource(args.input_path)
+    data = source.load()
 
-    dist_axes, z0 = backend_inference.normalize_scalar_fields(dist_axes, z0)
-    original_coord = xyz.copy()
+    dist_axes, z0 = backend_inference.normalize_scalar_fields(data.dist_axes, data.z0)
+    original_coord = data.xyz.copy()
 
     logger.info("Data loaded in %.2f seconds.", time.time() - start_data)
 
     start_preproc = time.time()
     logger.info("Running Preprocessing...")
-    point_features, remap_ids, _ = backend_inference.preprocess(xyz, z0, dist_axes, args.grid_size)
+    point_features, remap_ids, _ = backend_inference.preprocess(data.xyz, z0, dist_axes, args.grid_size)
     transformed_point = transform(point_features)
     logger.info("Preprocessing done in %.2f seconds.", time.time() - start_preproc)
 
     start_infer = time.time()
     logger.info("Running inference...")
     labels = backend_inference.run_inference(model, transformed_point, remap_ids, device)
-    io.write_las_predictions(str(args.output_path), original_coord, labels)
+
+    # Use abstracted destination
+    destination = FilePointCloudDestination(args.output_path)
+    result = SegmentationResult(original_coord=original_coord, labels=labels)
+    destination.save(result)
+
     logger.info("Inference done in %.2f seconds.", time.time() - start_infer)
 
     logger.info("Total time: %.2f seconds.", time.time() - start_total)

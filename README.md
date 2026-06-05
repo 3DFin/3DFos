@@ -1,4 +1,4 @@
-![image](assets/3DFoS_logo.png)
+![image](src/three_d_fos/assets/3DFoS_logo.png)
 
 # 3DFoS
 
@@ -13,7 +13,7 @@ This tool takes raw ground-based forest point clouds and performs semantic segme
 - **Stems:** Main trunk architecture.
 - **Canopy:** foliage and branches.
 
-![image](assets/3dfos_segmentation.png)
+![image](src/three_d_fos/assets/3dfos_segmentation.png)
 
 ## Key Features
 
