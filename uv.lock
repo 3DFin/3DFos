@@ -22,11 +22,6 @@ conflicts = [[
 [manifest]
 
 [[manifest.dependency-metadata]]
-name = "flash-attn"
-version = "2.8.3"
-requires-dist = ["torch", "setuptools", "einops"]
-
-[[manifest.dependency-metadata]]
 name = "nanotsparse"
 version = "2.2.0"
 requires-dist = ["torch", "setuptools", "ninja"]
@@ -68,9 +63,6 @@ cu130 = [
     { name = "torchvision", version = "0.27.0", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-5-3dfos-cu130') or (sys_platform == 'linux' and extra == 'extra-5-3dfos-cu128' and extra == 'extra-5-3dfos-cu130') or (sys_platform == 'win32' and extra == 'extra-5-3dfos-cu128' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu128') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-nanotsparsecuda')" },
     { name = "torchvision", version = "0.27.0+cu130", source = { registry = "https://download.pytorch.org/whl/cu130" }, marker = "(sys_platform == 'linux' and extra == 'extra-5-3dfos-cu130') or (sys_platform == 'win32' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cu128' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu128') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-nanotsparsecuda')" },
 ]
-flash-attn = [
-    { name = "flash-attn" },
-]
 gui = [
     { name = "pyside6" },
 ]
@@ -87,7 +79,6 @@ dev = [
 requires-dist = [
     { name = "addict", specifier = ">=2.4.0" },
     { name = "dendroptimized", specifier = ">=0.2.2" },
-    { name = "flash-attn", marker = "extra == 'flash-attn'", specifier = "==2.8.3" },
     { name = "laspy", specifier = ">=2.5.4" },
     { name = "lazrs", specifier = ">=0.7.0" },
     { name = "nanotsparse", marker = "extra == 'cpu'", specifier = ">=2.2.0" },
@@ -110,7 +101,7 @@ requires-dist = [
     { name = "torchvision", marker = "sys_platform != 'linux' and sys_platform != 'win32' and extra == 'cu130'", specifier = "~=0.27.0" },
     { name = "torchvision", marker = "extra == 'cpu'", specifier = "~=0.27.0", index = "https://download.pytorch.org/whl/cpu", conflict = { package = "3dfos", extra = "cpu" } },
 ]
-provides-extras = ["flash-attn", "nanotsparsecuda", "cpu", "cu130", "cu128", "gui"]
+provides-extras = ["nanotsparsecuda", "cpu", "cu130", "cu128", "gui"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "ruff" }]
@@ -435,15 +426,6 @@ wheels = [
 ]
 
 [[package]]
-name = "einops"
-version = "0.8.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/2c/77/850bef8d72ffb9219f0b1aac23fbc1bf7d038ee6ea666f331fa273031aa2/einops-0.8.2.tar.gz", hash = "sha256:609da665570e5e265e27283aab09e7f279ade90c4f01bcfca111f3d3e13f2827", size = 56261, upload-time = "2026-01-26T04:13:17.638Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/2a/09/f8d8f8f31e4483c10a906437b4ce31bdf3d6d417b73fe33f1a8b59e34228/einops-0.8.2-py3-none-any.whl", hash = "sha256:54058201ac7087911181bfec4af6091bb59380360f069276601256a76af08193", size = 65638, upload-time = "2026-01-26T04:13:18.546Z" },
-]
-
-[[package]]
 name = "filelock"
 version = "3.29.0"
 source = { registry = "https://pypi.org/simple" }
@@ -451,22 +433,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/b5/fe/997687a931ab51049
 wheels = [
     { url = "https://files.pythonhosted.org/packages/81/47/dd9a212ef6e343a6857485ffe25bba537304f1913bdbed446a23f7f592e1/filelock-3.29.0-py3-none-any.whl", hash = "sha256:96f5f6344709aa1572bbf631c640e4ebeeb519e08da902c39a001882f30ac258", size = 39812, upload-time = "2026-04-19T15:39:08.752Z" },
 ]
-
-[[package]]
-name = "flash-attn"
-version = "2.8.3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "einops" },
-    { name = "setuptools" },
-    { name = "torch", version = "2.11.0", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-5-3dfos-cu128') or (sys_platform == 'linux' and extra == 'extra-5-3dfos-cu128' and extra == 'extra-5-3dfos-cu130') or (sys_platform == 'win32' and extra == 'extra-5-3dfos-cu128' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu128') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-nanotsparsecuda')" },
-    { name = "torch", version = "2.11.0+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "(sys_platform == 'linux' and extra == 'extra-5-3dfos-cu128') or (sys_platform == 'win32' and extra == 'extra-5-3dfos-cu128') or (extra == 'extra-5-3dfos-cu128' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu128') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-nanotsparsecuda')" },
-    { name = "torch", version = "2.12.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-5-3dfos-cpu') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu128') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-nanotsparsecuda') or (extra == 'extra-5-3dfos-cu128' and extra == 'extra-5-3dfos-cu130')" },
-    { name = "torch", version = "2.12.0", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-5-3dfos-cpu' and extra != 'extra-5-3dfos-cu128') or (sys_platform == 'linux' and extra != 'extra-5-3dfos-cpu' and extra != 'extra-5-3dfos-cu128' and extra != 'extra-5-3dfos-cu130') or (sys_platform == 'win32' and extra != 'extra-5-3dfos-cpu' and extra != 'extra-5-3dfos-cu128' and extra != 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu128') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-nanotsparsecuda') or (extra == 'extra-5-3dfos-cu128' and extra == 'extra-5-3dfos-cu130')" },
-    { name = "torch", version = "2.12.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'extra-5-3dfos-cpu') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu128') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-nanotsparsecuda') or (extra == 'extra-5-3dfos-cu128' and extra == 'extra-5-3dfos-cu130')" },
-    { name = "torch", version = "2.12.0+cu130", source = { registry = "https://download.pytorch.org/whl/cu130" }, marker = "(sys_platform == 'linux' and extra == 'extra-5-3dfos-cu130') or (sys_platform == 'win32' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cu128' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu128') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-nanotsparsecuda')" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/3b/b2/8d76c41ad7974ee264754709c22963447f7f8134613fd9ce80984ed0dab7/flash_attn-2.8.3.tar.gz", hash = "sha256:1e71dd64a9e0280e0447b8a0c2541bad4bf6ac65bdeaa2f90e51a9e57de0370d", size = 8447812, upload-time = "2025-08-15T08:28:12.911Z" }
 
 [[package]]
 name = "frozenlist"
@@ -1508,13 +1474,13 @@ resolution-markers = [
     "sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "filelock", marker = "(sys_platform == 'darwin' and extra == 'extra-5-3dfos-cpu') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu128') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-nanotsparsecuda') or (extra == 'extra-5-3dfos-cu128' and extra == 'extra-5-3dfos-cu130')" },
-    { name = "fsspec", marker = "(sys_platform == 'darwin' and extra == 'extra-5-3dfos-cpu') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu128') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-nanotsparsecuda') or (extra == 'extra-5-3dfos-cu128' and extra == 'extra-5-3dfos-cu130')" },
-    { name = "jinja2", marker = "(sys_platform == 'darwin' and extra == 'extra-5-3dfos-cpu') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu128') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-nanotsparsecuda') or (extra == 'extra-5-3dfos-cu128' and extra == 'extra-5-3dfos-cu130')" },
-    { name = "networkx", marker = "(sys_platform == 'darwin' and extra == 'extra-5-3dfos-cpu') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu128') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-nanotsparsecuda') or (extra == 'extra-5-3dfos-cu128' and extra == 'extra-5-3dfos-cu130')" },
-    { name = "setuptools", marker = "(sys_platform == 'darwin' and extra == 'extra-5-3dfos-cpu') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu128') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-nanotsparsecuda') or (extra == 'extra-5-3dfos-cu128' and extra == 'extra-5-3dfos-cu130')" },
-    { name = "sympy", marker = "(sys_platform == 'darwin' and extra == 'extra-5-3dfos-cpu') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu128') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-nanotsparsecuda') or (extra == 'extra-5-3dfos-cu128' and extra == 'extra-5-3dfos-cu130')" },
-    { name = "typing-extensions", marker = "(sys_platform == 'darwin' and extra == 'extra-5-3dfos-cpu') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu128') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-nanotsparsecuda') or (extra == 'extra-5-3dfos-cu128' and extra == 'extra-5-3dfos-cu130')" },
+    { name = "filelock", marker = "sys_platform == 'darwin'" },
+    { name = "fsspec", marker = "sys_platform == 'darwin'" },
+    { name = "jinja2", marker = "sys_platform == 'darwin'" },
+    { name = "networkx", marker = "sys_platform == 'darwin'" },
+    { name = "setuptools", marker = "sys_platform == 'darwin'" },
+    { name = "sympy", marker = "sys_platform == 'darwin'" },
+    { name = "typing-extensions", marker = "sys_platform == 'darwin'" },
 ]
 wheels = [
     { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.12.0-cp312-cp312-macosx_14_0_arm64.whl", hash = "sha256:b41339df93d491435e790ff8bcbae1c0ce777175889bfd1281d119862793e6a2", upload-time = "2026-05-12T16:20:12Z" },
@@ -1570,13 +1536,13 @@ resolution-markers = [
     "sys_platform != 'darwin'",
 ]
 dependencies = [
-    { name = "filelock", marker = "(sys_platform != 'darwin' and extra == 'extra-5-3dfos-cpu') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu128') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-nanotsparsecuda') or (extra == 'extra-5-3dfos-cu128' and extra == 'extra-5-3dfos-cu130')" },
-    { name = "fsspec", marker = "(sys_platform != 'darwin' and extra == 'extra-5-3dfos-cpu') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu128') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-nanotsparsecuda') or (extra == 'extra-5-3dfos-cu128' and extra == 'extra-5-3dfos-cu130')" },
-    { name = "jinja2", marker = "(sys_platform != 'darwin' and extra == 'extra-5-3dfos-cpu') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu128') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-nanotsparsecuda') or (extra == 'extra-5-3dfos-cu128' and extra == 'extra-5-3dfos-cu130')" },
-    { name = "networkx", marker = "(sys_platform != 'darwin' and extra == 'extra-5-3dfos-cpu') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu128') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-nanotsparsecuda') or (extra == 'extra-5-3dfos-cu128' and extra == 'extra-5-3dfos-cu130')" },
-    { name = "setuptools", marker = "(sys_platform != 'darwin' and extra == 'extra-5-3dfos-cpu') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu128') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-nanotsparsecuda') or (extra == 'extra-5-3dfos-cu128' and extra == 'extra-5-3dfos-cu130')" },
-    { name = "sympy", marker = "(sys_platform != 'darwin' and extra == 'extra-5-3dfos-cpu') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu128') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-nanotsparsecuda') or (extra == 'extra-5-3dfos-cu128' and extra == 'extra-5-3dfos-cu130')" },
-    { name = "typing-extensions", marker = "(sys_platform != 'darwin' and extra == 'extra-5-3dfos-cpu') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu128') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-cu130') or (extra == 'extra-5-3dfos-cpu' and extra == 'extra-5-3dfos-nanotsparsecuda') or (extra == 'extra-5-3dfos-cu128' and extra == 'extra-5-3dfos-cu130')" },
+    { name = "filelock", marker = "sys_platform != 'darwin'" },
+    { name = "fsspec", marker = "sys_platform != 'darwin'" },
+    { name = "jinja2", marker = "sys_platform != 'darwin'" },
+    { name = "networkx", marker = "sys_platform != 'darwin'" },
+    { name = "setuptools", marker = "sys_platform != 'darwin'" },
+    { name = "sympy", marker = "sys_platform != 'darwin'" },
+    { name = "typing-extensions", marker = "sys_platform != 'darwin'" },
 ]
 wheels = [
     { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.12.0%2Bcpu-cp312-cp312-linux_s390x.whl", hash = "sha256:b9d0e8eed0af9321ffb12b75f4aca371b071254f12cf75875d5a8e7cc8f52b51", upload-time = "2026-05-12T23:16:33Z" },

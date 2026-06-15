@@ -25,12 +25,6 @@ else:
     config.dataflow = F.Dataflow.ImplicitGEMM
 F.conv_config.set_global_conv_config(config)
 
-
-try:
-    import flash_attn
-except ImportError:
-    flash_attn = None
-
 from three_d_fos.backend.module import PointModule, PointSequential
 from three_d_fos.backend.structure import Point
 from three_d_fos.backend.utils import offset2bincount
@@ -128,7 +122,6 @@ class SerializedAttention(PointModule):
             assert enable_rpe is False, "Set enable_rpe to False when enable Flash Attention"
             assert upcast_attention is False, "Set upcast_attention to False when enable Flash Attention"
             assert upcast_softmax is False, "Set upcast_softmax to False when enable Flash Attention"
-            assert flash_attn is not None, "Make sure flash_attn is installed."
             self.patch_size = patch_size
             self.attn_drop = attn_drop
         else:
@@ -206,8 +199,7 @@ class SerializedAttention(PointModule):
         return point[pad_key], point[unpad_key], point[cu_seqlens_key]
 
     def forward(self, point):
-        if not self.enable_flash or flash_attn is not None:
-            self.patch_size = min(offset2bincount(point.offset).min().tolist(), self.patch_size_max)
+        self.patch_size = min(offset2bincount(point.offset).min().tolist(), self.patch_size_max)
 
         H = self.num_heads
         K = self.patch_size
@@ -221,7 +213,7 @@ class SerializedAttention(PointModule):
         # padding and reshape feat and batch for serialized point patch
         qkv = self.qkv(point.feat)[order]
 
-        if not self.enable_flash or not flash_attn:
+        if not self.enable_flash:
             # compute qkv
             qkv = qkv.view(-1, K, 3, H, C // H)
             q = qkv[:, :, 0].transpose(1, 2)

@@ -13,12 +13,6 @@ from three_d_fos.io import FilePointCloudDestination, FilePointCloudSource, Segm
 logger = logging.getLogger(__name__)
 setup_logging()
 
-try:
-    import flash_attn
-except ImportError:
-    logger.warning("no flash attn")
-    flash_attn = None
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="3D Point Cloud Segmentation for forestry applications.")
@@ -54,11 +48,9 @@ def main() -> None:
     transform = three_d_fos.transform.transform_config()
     if args.backbone == "ptv3":
         config = three_d_fos.ptv3v1m1_model.model_config()
-        config["enable_flash"] = bool(flash_attn)
         model = three_d_fos.seghead.load(ckpt_path=args.model_path, custom_config=config, backbone="ptv3")
     elif args.backbone == "litept":
         config = three_d_fos.liteptv1m1_model.model_config()
-        config["enable_flash"] = bool(flash_attn)
         model = three_d_fos.seghead.load(ckpt_path=args.model_path, custom_config=config, backbone="litept")
     else:
         raise ValueError(f"Unsupported backbone: '{args.backbone}'. Choose from: ptv3, litept")

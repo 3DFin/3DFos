@@ -15,6 +15,7 @@ from torch import nn
 from torch.nn.functional import scaled_dot_product_attention
 
 # In torchsparse / nanotsparse, we change the dataflow for CPU as it's ne only available solution
+# TODO(RJ) change if CPU usage is forced
 config = F.conv_config.get_default_conv_config()
 if not torch.cuda.is_available():
     config.dataflow = F.Dataflow.GatherScatter
@@ -22,12 +23,6 @@ if not torch.cuda.is_available():
 else:
     config.dataflow = F.Dataflow.ImplicitGEMM
 F.conv_config.set_global_conv_config(config)
-
-
-try:
-    import flash_attn
-except ImportError:
-    flash_attn = None
 
 from three_d_fos.backend.module import PointModule, PointSequential
 from three_d_fos.backend.structure import Point
@@ -244,7 +239,7 @@ class PointROPEAttention(PointModule):
             dim=1,
         )  # [N, 3, H, head_dim]
 
-        if not self.enable_flash and not flash_attn:
+        if not self.enable_flash:
             # compute qkv
             qkv = qkv.view(-1, K, 3, H, C // H)
             q = qkv[:, :, 0].transpose(1, 2)

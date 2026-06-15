@@ -94,20 +94,14 @@ class InferenceWorker(QThread):
 
     def _load_model(self, backbone: str = "ptv3") -> None:
         """Load the segmentation model."""
-        try:
-            import flash_attn
-        except ImportError:
-            flash_attn = None
 
         # TODO: refactor (duplicated in CLI)
         try:
             if backbone == "ptv3":
                 config = three_d_fos.ptv3v1m1_model.model_config()
-                config["enable_flash"] = bool(flash_attn)
                 self.model = three_d_fos.seghead.load(ckpt_path=None, custom_config=config, backbone="ptv3")
             elif backbone == "litept":
                 config = three_d_fos.liteptv1m1_model.model_config()
-                config["enable_flash"] = bool(flash_attn)
                 self.model = three_d_fos.seghead.load(ckpt_path=None, custom_config=config, backbone="litept")
             else:
                 raise ValueError(f"Unsupported backbone: '{backbone}'. Choose from: ptv3, litept")
