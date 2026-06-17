@@ -14,6 +14,7 @@ from addict import Dict
 from nanotsparse.nn import Conv3d
 from nanotsparse.nn import functional as F
 from torch import nn
+from torch.nn.attention.varlen import varlen_attn
 from torch.nn.functional import scaled_dot_product_attention
 
 # In torchsparse / nanotsparse, we change the dataflow for CPU as it's ne only available solution
@@ -27,7 +28,7 @@ F.conv_config.set_global_conv_config(config)
 
 from three_d_fos.backend.module import PointModule, PointSequential
 from three_d_fos.backend.structure import Point
-from three_d_fos.backend.utils import offset2bincount
+from three_d_fos.backend.utils import is_gpu_ampere_or_newer, offset2bincount
 
 
 class PDNorm(PointModule):
@@ -118,19 +119,20 @@ class SerializedAttention(PointModule):
         self.upcast_softmax = upcast_softmax
         self.enable_rpe = enable_rpe
         self.enable_flash = enable_flash
+
+        self.patch_size_max = patch_size
+        self.patch_size = patch_size
+
         if enable_flash:
             assert enable_rpe is False, "Set enable_rpe to False when enable Flash Attention"
             assert upcast_attention is False, "Set upcast_attention to False when enable Flash Attention"
             assert upcast_softmax is False, "Set upcast_softmax to False when enable Flash Attention"
-            self.patch_size = patch_size
             self.attn_drop = attn_drop
         else:
             # when disable flash attention, we still don't want to use mask
             # consequently, patch size will auto set to the
             # min number of patch_size_max and number of points
-            self.patch_size_max = patch_size
-            self.patch_size = 0
-            self.attn_drop = torch.nn.Dropout(attn_drop)
+            self.attn_drop = attn_drop
 
         self.qkv = torch.nn.Linear(channels, channels * 3, bias=qkv_bias)
         self.proj = torch.nn.Linear(channels, channels)
@@ -214,22 +216,20 @@ class SerializedAttention(PointModule):
         qkv = self.qkv(point.feat)[order]
 
         if not self.enable_flash:
-            # compute qkv
             qkv = qkv.view(-1, K, 3, H, C // H)
-            q = qkv[:, :, 0].transpose(1, 2)
-            k = qkv[:, :, 1].transpose(1, 2)
-            v = qkv[:, :, 2].transpose(1, 2)
-            feat = scaled_dot_product_attention(q, k, v, scale=self.scale)
-            feat = feat.transpose(1, 2).reshape(-1, C)
-        else:
-            feat = flash_attn.flash_attn_varlen_qkvpacked_fun(
-                qkv.half().reshape(-1, 3, H, C // H),
-                cu_seqlens,
-                max_seqlen=self.patch_size,
-                dropout_p=self.attn_drop if self.training else 0,
-                softmax_scale=self.scale,
+            q = qkv[:, :, 0]
+            k = qkv[:, :, 1]
+            v = qkv[:, :, 2]
+            feat = scaled_dot_product_attention(
+                q, k, v, scale=self.scale, dropout_p=self.attn_drop if self.training else 0
             ).reshape(-1, C)
-            feat = feat.to(qkv.dtype)
+        else:
+            org_type = qkv.dtype
+            qkv_reshaped = qkv.half().reshape(-1, 3, H, C // H)
+            q = qkv_reshaped[:, 0]
+            k = qkv_reshaped[:, 1]
+            v = qkv_reshaped[:, 2]
+            feat = varlen_attn(q, k, v, cu_seqlens, cu_seqlens, K, K, scale=self.scale, ).reshape(-1, C).to(org_type)
         feat = feat[inverse]
 
         # ffn
@@ -724,7 +724,7 @@ def model_config():
         shuffle_orders=True,
         pre_norm=True,
         enable_rpe=False,
-        enable_flash=True,
+        enable_flash=is_gpu_ampere_or_newer(),
         upcast_attention=False,
         upcast_softmax=False,
         cls_mode=False,

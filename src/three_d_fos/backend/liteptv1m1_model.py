@@ -12,6 +12,7 @@ from addict import Dict
 from nanotsparse.nn import Conv3d
 from nanotsparse.nn import functional as F
 from torch import nn
+from torch.nn.attention.varlen import varlen_attn
 from torch.nn.functional import scaled_dot_product_attention
 
 # In torchsparse / nanotsparse, we change the dataflow for CPU as it's ne only available solution
@@ -26,7 +27,7 @@ F.conv_config.set_global_conv_config(config)
 
 from three_d_fos.backend.module import PointModule, PointSequential
 from three_d_fos.backend.structure import Point
-from three_d_fos.backend.utils import offset2bincount
+from three_d_fos.backend.utils import is_gpu_ampere_or_newer, offset2bincount
 
 try:
     import pointrope as _kernels
@@ -142,7 +143,9 @@ class PointROPEAttention(PointModule):
         self.order_index = order_index
         self.enable_flash = enable_flash
 
+        self.patch_size_max = patch_size
         self.patch_size = patch_size
+
         self.attn_drop = attn_drop
 
         self.qkv = torch.nn.Linear(channels, channels * 3, bias=qkv_bias)
@@ -204,6 +207,7 @@ class PointROPEAttention(PointModule):
         return point[pad_key], point[unpad_key], point[cu_seqlens_key]
 
     def forward(self, point):
+        self.patch_size = min(offset2bincount(point.offset).min().tolist(), self.patch_size_max)
 
         H = self.num_heads
         K = self.patch_size
@@ -221,7 +225,7 @@ class PointROPEAttention(PointModule):
         pos = point.grid_coord[order]  # [N, 3]
         pos = pos.reshape(-1, 3).unsqueeze(0)
 
-        q, k, v = qkv.half().chunk(3, dim=-1)
+        q, k, v = qkv.chunk(3, dim=-1)
         q = q.reshape(-1, H, C // H).transpose(0, 1)[None]  # [1, H, N, head_dim]
         k = k.reshape(-1, H, C // H).transpose(0, 1)[None]  # [1, H, N, head_dim]
 
@@ -239,24 +243,27 @@ class PointROPEAttention(PointModule):
             dim=1,
         )  # [N, 3, H, head_dim]
 
-        if not self.enable_flash:
-            # compute qkv
-            qkv = qkv.view(-1, K, 3, H, C // H)
-            q = qkv[:, :, 0].transpose(1, 2)
-            k = qkv[:, :, 1].transpose(1, 2)
-            v = qkv[:, :, 2].transpose(1, 2)
-            feat = scaled_dot_product_attention(q, k, v, scale=self.scale)
-            feat = feat.transpose(1, 2).reshape(-1, C)
-        else:
-            feat = flash_attn.flash_attn_varlen_qkvpacked_func(
-                qkv_rotated,
-                cu_seqlens,
-                max_seqlen=self.patch_size,
-                dropout_p=self.attn_drop if self.training else 0,
-                softmax_scale=self.scale,
-            ).reshape(-1, C)
 
-        feat = feat.to(qkv.dtype)
+        #if not self.enable_flash:
+        if True:
+            # compute qkv
+            qkv = qkv_rotated.view(-1, K, 3, H, C // H)
+            q = qkv[:, :, 0]
+            k = qkv[:, :, 1]
+            v = qkv[:, :, 2]
+            feat = scaled_dot_product_attention(
+                q, k, v, scale=self.scale, dropout_p=self.attn_drop if self.training else 0
+            )
+            feat = feat.reshape(-1, C)
+        else:
+            org_type = qkv_rotated.dtype
+            qkv_reshaped = qkv_rotated.half()
+            q = qkv_reshaped[:, 0]
+            k = qkv_reshaped[:, 1]
+            v = qkv_reshaped[:, 2]
+            # TODO does not work since head is not a multiple of 8
+            feat = varlen_attn(q, k, v, cu_seqlens, cu_seqlens, K, K, scale=self.scale).reshape(-1, C).to(org_type)
+            feat = feat.to(qkv.dtype)
         feat = feat[inverse]
 
         # ffn
@@ -750,6 +757,7 @@ class LitePT(PointModule):
 
 
 def model_config():
+
     # model settings
     return dict(
         in_channels=5,
@@ -778,5 +786,5 @@ def model_config():
         pre_norm=True,
         shuffle_orders=True,
         enc_mode=False,
-        enable_flash=True,
+        enable_flash=is_gpu_ampere_or_newer(),
     )
