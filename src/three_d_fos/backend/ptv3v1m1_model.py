@@ -28,7 +28,7 @@ F.conv_config.set_global_conv_config(config)
 
 from three_d_fos.backend.module import PointModule, PointSequential
 from three_d_fos.backend.structure import Point
-from three_d_fos.backend.utils import is_gpu_ampere_or_newer, offset2bincount
+from three_d_fos.backend.utils import do_support_flash_attn, offset2bincount
 
 
 class PDNorm(PointModule):
@@ -229,7 +229,20 @@ class SerializedAttention(PointModule):
             q = qkv_reshaped[:, 0]
             k = qkv_reshaped[:, 1]
             v = qkv_reshaped[:, 2]
-            feat = varlen_attn(q, k, v, cu_seqlens, cu_seqlens, K, K, scale=self.scale, ).reshape(-1, C).to(org_type)
+            feat = (
+                varlen_attn(
+                    q,
+                    k,
+                    v,
+                    cu_seqlens,
+                    cu_seqlens,
+                    K,
+                    K,
+                    scale=self.scale,
+                )
+                .reshape(-1, C)
+                .to(org_type)
+            )
         feat = feat[inverse]
 
         # ffn
@@ -724,7 +737,7 @@ def model_config():
         shuffle_orders=True,
         pre_norm=True,
         enable_rpe=False,
-        enable_flash=is_gpu_ampere_or_newer(),
+        enable_flash=do_support_flash_attn(),
         upcast_attention=False,
         upcast_softmax=False,
         cls_mode=False,

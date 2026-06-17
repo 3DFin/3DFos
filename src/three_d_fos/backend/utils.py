@@ -8,6 +8,7 @@ Please cite our work if the code is helpful to you.
 import logging
 import os
 import random
+import sys
 from datetime import datetime
 
 import numpy as np
@@ -17,8 +18,9 @@ from torch.backends import cudnn
 logger = logging.getLogger(__name__)
 
 
-def is_gpu_ampere_or_newer():
-    if not torch.cuda.is_available():
+def do_support_flash_attn():
+    # Flash attn backend is not available on windows builds of PyTorch.
+    if not torch.cuda.is_available() or sys.platform == "xin32":
         return False
 
     # Get compute capability (major, minor)

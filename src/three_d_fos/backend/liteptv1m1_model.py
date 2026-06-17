@@ -27,7 +27,7 @@ F.conv_config.set_global_conv_config(config)
 
 from three_d_fos.backend.module import PointModule, PointSequential
 from three_d_fos.backend.structure import Point
-from three_d_fos.backend.utils import is_gpu_ampere_or_newer, offset2bincount
+from three_d_fos.backend.utils import do_support_flash_attn, offset2bincount
 
 try:
     import pointrope as _kernels
@@ -243,8 +243,7 @@ class PointROPEAttention(PointModule):
             dim=1,
         )  # [N, 3, H, head_dim]
 
-
-        #if not self.enable_flash:
+        # if not self.enable_flash:
         if True:
             # compute qkv
             qkv = qkv_rotated.view(-1, K, 3, H, C // H)
@@ -786,5 +785,5 @@ def model_config():
         pre_norm=True,
         shuffle_orders=True,
         enc_mode=False,
-        enable_flash=is_gpu_ampere_or_newer(),
+        enable_flash=do_support_flash_attn(),
     )
