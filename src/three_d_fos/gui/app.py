@@ -79,7 +79,6 @@ class InferenceWorker(QThread):
 
             self.progress.emit("Running inference...")
             with torch.no_grad():
-                self.model.to(self.device).eval()
                 labels = backend_inference.run_inference(self.model, transformed_point, remap_ids, self.device)
 
             self.progress.emit("Saving results...")
@@ -93,7 +92,7 @@ class InferenceWorker(QThread):
             self.error.emit(str(e))
 
     def _load_model(self, backbone: str = "ptv3") -> None:
-        """Load the segmentation model."""
+        """Load the segmentation model (in the device)."""
 
         # TODO: refactor (duplicated in CLI)
         try:
@@ -105,6 +104,8 @@ class InferenceWorker(QThread):
                 self.model = three_d_fos.seghead.load(ckpt_path=None, custom_config=config, backbone="litept")
             else:
                 raise ValueError(f"Unsupported backbone: '{backbone}'. Choose from: ptv3, litept")
+            # Move model to target device immediately
+            self.model.to(self.device).eval()
         except Exception as e:
             self.progress.emit(f"Failed to load model: {e}")
         self.progress.emit("Model loaded successfully")
@@ -118,7 +119,7 @@ class MainWidget(QWidget):
         self.setWindowTitle("3DFos - Point Cloud Segmentation")
         self.setGeometry(100, 100, 800, 600)
 
-        self.device: torch.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+        self.device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.worker: InferenceWorker | None = None
         self.current_source: PointCloudSource | None = None
         self.current_destination: PointCloudDestination | None = None
@@ -143,14 +144,21 @@ class MainWidget(QWidget):
         # For now, organize in a grid layout
         parameters_layout = QGridLayout()
 
-        # Device
-        model_info_lbl = QLabel("Device")
-        model_info_in = QLabel(self.device.type.upper())
-        model_info_in.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
-        if torch.cuda.is_available():
-            model_info_in.setText(torch.cuda.get_device_name())
-        parameters_layout.addWidget(model_info_lbl, 0, 0)
-        parameters_layout.addWidget(model_info_in, 0, 1)
+        self.device_lbl = QLabel("Device")
+        # Populate with available devices
+        devices = ["cuda", "cpu"] if torch.cuda.is_available() else ["cpu"]
+        if len(devices) == 1:
+            self.device_in = QLabel(devices[0])
+            self.device = torch.device(devices[0])
+        else:
+            self.device_in = QComboBox()
+            self.device_in.addItems(devices)
+            self.device_in.setCurrentText(self.device.type)
+            self.device_in.currentTextChanged.connect(self._on_device_changed)
+
+        self.device_in.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
+        parameters_layout.addWidget(self.device_lbl, 0, 0)
+        parameters_layout.addWidget(self.device_in, 0, 1)
 
         # Voxel size
         self.grid_size_lbl = QLabel("Voxel size")
@@ -209,6 +217,10 @@ class MainWidget(QWidget):
         self.status_lbl = QLabel("Please select an input file")
         self.status_bar.addWidget(self.status_lbl)
         main_layout.addWidget(self.status_bar)
+
+    def _on_device_changed(self, device_str: str) -> None:
+        """Handle device selection."""
+        self.device = torch.device(device_str)
 
     def _on_select_file(self) -> None:
         """Handle file selection."""
