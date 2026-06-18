@@ -12,7 +12,6 @@ from addict import Dict
 from nanotsparse.nn import Conv3d
 from nanotsparse.nn import functional as F
 from torch import nn
-from torch.nn.attention.varlen import varlen_attn
 from torch.nn.functional import scaled_dot_product_attention
 
 # In torchsparse / nanotsparse, we change the dataflow for CPU as it's ne only available solution
@@ -203,8 +202,8 @@ class PointROPEAttention(PointModule):
                 )
             point[pad_key] = pad
             point[unpad_key] = unpad
-            point[cu_seqlens_key] = nn.functional.pad(torch.concat(cu_seqlens), (0, 1), value=_offset_pad[-1])
-        return point[pad_key], point[unpad_key], point[cu_seqlens_key]
+        #            point[cu_seqlens_key] = nn.functional.pad(torch.concat(cu_seqlens), (0, 1), value=_offset_pad[-1])
+        return point[pad_key], point[unpad_key]  # , point[cu_seqlens_key]
 
     def forward(self, point):
         self.patch_size = min(offset2bincount(point.offset).min().tolist(), self.patch_size_max)
@@ -213,13 +212,16 @@ class PointROPEAttention(PointModule):
         K = self.patch_size
         C = self.channels
 
-        pad, unpad, cu_seqlens = self.get_padding_and_inverse(point)
+        pad, unpad = self.get_padding_and_inverse(point)
 
         order = point.serialized_order[self.order_index][pad]
         inverse = unpad[point.serialized_inverse[self.order_index]]
 
         # padding and reshape feat and batch for serialized point patch
-        qkv = self.qkv(point.feat)[order]  # [N, C]
+        if point.feat.is_cuda:
+            qkv = self.qkv(point.feat)[order].bfloat16()  # [N, C]
+        else:
+            qkv = self.qkv(point.feat)[order]  # [N, C]
 
         ## apply pointrope
         pos = point.grid_coord[order]  # [N, 3]
@@ -243,27 +245,19 @@ class PointROPEAttention(PointModule):
             dim=1,
         )  # [N, 3, H, head_dim]
 
-        # if not self.enable_flash:
-        if True:
-            # compute qkv
-            qkv = qkv_rotated.view(-1, K, 3, H, C // H)
-            q = qkv[:, :, 0]
-            k = qkv[:, :, 1]
-            v = qkv[:, :, 2]
-            feat = scaled_dot_product_attention(
-                q, k, v, scale=self.scale, dropout_p=self.attn_drop if self.training else 0
-            )
-            feat = feat.reshape(-1, C)
+        # compute qkv
+        qkv = qkv_rotated.view(-1, K, 3, H, C // H)
+        q = qkv[:, :, 0]
+        k = qkv[:, :, 1]
+        v = qkv[:, :, 2]
+        feat = scaled_dot_product_attention(
+            q, k, v, scale=self.scale, dropout_p=self.attn_drop if self.training else 0
+        ).reshape(-1, C)
+
+        if point.feat.is_cuda:
+            feat = feat[inverse].float()
         else:
-            org_type = qkv_rotated.dtype
-            qkv_reshaped = qkv_rotated.half()
-            q = qkv_reshaped[:, 0]
-            k = qkv_reshaped[:, 1]
-            v = qkv_reshaped[:, 2]
-            # TODO does not work since head is not a multiple of 8
-            feat = varlen_attn(q, k, v, cu_seqlens, cu_seqlens, K, K, scale=self.scale).reshape(-1, C).to(org_type)
-            feat = feat.to(qkv.dtype)
-        feat = feat[inverse]
+            feat = feat[inverse]
 
         # ffn
         feat = self.proj(feat)

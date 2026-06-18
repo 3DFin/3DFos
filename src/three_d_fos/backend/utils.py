@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 def do_support_flash_attn():
     # Flash attn backend is not available on windows builds of PyTorch.
-    if not torch.cuda.is_available() or sys.platform == "xin32":
+    if not torch.cuda.is_available() or sys.platform == "win32":
         return False
 
     # Get compute capability (major, minor)

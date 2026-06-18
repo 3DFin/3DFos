@@ -213,7 +213,10 @@ class SerializedAttention(PointModule):
         inverse = unpad[point.serialized_inverse[self.order_index]]
 
         # padding and reshape feat and batch for serialized point patch
-        qkv = self.qkv(point.feat)[order]
+        if point.feat.is_cuda:
+            qkv = self.qkv(point.feat)[order].bfloat16()
+        else:
+            qkv = self.qkv(point.feat)[order]
 
         if not self.enable_flash:
             qkv = qkv.view(-1, K, 3, H, C // H)
@@ -224,26 +227,16 @@ class SerializedAttention(PointModule):
                 q, k, v, scale=self.scale, dropout_p=self.attn_drop if self.training else 0
             ).reshape(-1, C)
         else:
-            org_type = qkv.dtype
-            qkv_reshaped = qkv.half().reshape(-1, 3, H, C // H)
+            qkv_reshaped = qkv.reshape(-1, 3, H, C // H)
             q = qkv_reshaped[:, 0]
             k = qkv_reshaped[:, 1]
             v = qkv_reshaped[:, 2]
-            feat = (
-                varlen_attn(
-                    q,
-                    k,
-                    v,
-                    cu_seqlens,
-                    cu_seqlens,
-                    K,
-                    K,
-                    scale=self.scale,
-                )
-                .reshape(-1, C)
-                .to(org_type)
-            )
-        feat = feat[inverse]
+            feat = varlen_attn(q, k, v, cu_seqlens, cu_seqlens, K, K, scale=self.scale).reshape(-1, C)
+
+        if point.feat.is_cuda:
+            feat = feat[inverse].float()
+        else:
+            feat = feat[inverse]
 
         # ffn
         feat = self.proj(feat)
