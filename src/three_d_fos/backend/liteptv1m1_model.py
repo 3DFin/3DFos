@@ -14,16 +14,6 @@ from nanotsparse.nn import functional as F
 from torch import nn
 from torch.nn.functional import scaled_dot_product_attention
 
-# In torchsparse / nanotsparse, we change the dataflow for CPU as it's ne only available solution
-# TODO(RJ) change if CPU usage is forced
-config = F.conv_config.get_default_conv_config()
-if not torch.cuda.is_available():
-    config.dataflow = F.Dataflow.GatherScatter
-    config.kmap_mode = "hashmap"
-else:
-    config.dataflow = F.Dataflow.ImplicitGEMM
-F.conv_config.set_global_conv_config(config)
-
 from three_d_fos.backend.module import PointModule, PointSequential
 from three_d_fos.backend.structure import Point
 from three_d_fos.backend.utils import do_support_flash_attn, offset2bincount

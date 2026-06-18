@@ -9,6 +9,7 @@ import numpy as np
 import pgeof
 import torch
 from dendroptimized import voxelize
+from nanotsparse.nn import functional as F
 
 # Feature normalization constants
 DIST_AXES_SCALE = 15.0
@@ -29,7 +30,7 @@ def preprocess(
     xyz = xyz.astype(np.float64)
     voxelated_cloud, remap_ids, sample_ids = voxelize(xyz, grid_size, grid_size, 5, with_n_points=False, verbose=False)
 
-    # Resample the data according to the voxelization
+    # Resample the data according to the voxelization.
     global_shift = np.min(xyz, axis=0)
     grid_coords = np.floor((voxelated_cloud - global_shift) / grid_size).astype(np.int_)
 
@@ -71,6 +72,16 @@ def run_inference(
             if isinstance(data[key], torch.Tensor):
                 data[key] = data[key].to(device, non_blocking=True)
 
-        predictions = model(data)
+        # Configure nanots according to our current device.
+        nanots_config = F.conv_config.get_default_conv_config()
 
+        if device.type == "cuda":
+            nanots_config.dataflow = F.Dataflow.ImplicitGEMM
+        else:
+            nanots_config.dataflow = F.Dataflow.GatherScatter
+            nanots_config.kmap_mode = "hashmap"
+
+        F.conv_config.set_global_conv_config(nanots_config)
+
+        predictions = model(data)
         return predictions["seg_logits"][remap_ids].argmax(dim=-1).cpu().numpy()

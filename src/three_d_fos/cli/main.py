@@ -33,14 +33,23 @@ def main() -> None:
         help="Choose backbone: ptv3 or litept",
     )
 
+    parser.add_argument(
+        "--device",
+        type=str,
+        choices=["cuda", "cpu"] if torch.cuda.is_available() else ["cpu"],
+        default="cuda" if torch.cuda.is_available() else "cpu",
+        help="Choose backbone: ptv3 or litept",
+    )
+
     args = parser.parse_args()
 
     # Check CUDA availability and set device
-    device: torch.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    if torch.cuda.is_available():
+    device: torch.device = torch.device(args.device)
+
+    if device.type == "cuda":
         logger.info("Using CUDA: %s", torch.cuda.get_device_name())
     else:
-        logger.warning("CUDA not available, using CPU")
+        logger.info("Using CPU")
 
     start_total = time.time()
 
