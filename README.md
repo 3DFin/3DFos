@@ -37,8 +37,18 @@ Please cite [PointCept](https://github.com/pointcept/pointcept), [PTV3](https://
 
 ### Pure CPU inference
 
+Simply whith `pip`, in a dedicated `venv`
+
 ```
-uv sync --extra cpu
+python -m pip install "3dfos[cpu,gui] @ git+https://github.com/3DFin/3DFos.git"
+```
+
+Or clone the repo and use `uv` / `pip`
+
+```
+git clone git+https://github.com/3DFin/3DFos.git
+cd 3DFos
+uv sync --extra cpu --extra gui
 ```
 
 ### CUDA/GPU
@@ -63,17 +73,11 @@ uv sync --extra cu130 --extra nanotsparsecuda --no-cache --reinstall-package nan
 
 on Windows system, it might be necessary to set `DISTUTILS_USE_SDK` env variable in order to compile `nanoTSparse`.
 
-i.e on Windows Developer PowerShell` terminal session.
+i.e on `Windows Developer PowerShell` terminal session.
 
 ```
 $env:DISTUTILS_USE_SDK = 1
 uv sync --extra cu130 --extra nanotsparse
-```
-
-### Standalone with GUI
-
-```
-uv sync --extra cpu --extra gui
 ```
 
 ## Usage
@@ -81,10 +85,14 @@ uv sync --extra cpu --extra gui
 ### CLI
 
 ```
-uv run 3DFos <path_to_the_cloud.las|ply> [--output_path seg_result.las] [--model_path model.ckpt] [--grid_size 0.05] [--backbone ptv3 | litept]
+uv run 3DFos <path_to_the_cloud.las|ply> [--output_path seg_result.las] [--model_path model.ckpt] [--grid_size 0.05] [--backbone ptv3 | litept] [--device cuda | cpu]
 ```
 
 ### GUI
+
+### Standalone with GUI
+
+Ensure 3DFos is installed with `gui` extra, then run
 
 ```
 uv run 3DFos-gui
@@ -114,6 +122,6 @@ and by the Spanish Knowledge Generation project (PID2021-126790NB-I00):
 
 ## TODOs:
 
-- Provide a pixi file in order to simplify installation / compilation?
+- Provide a pixi file in order to simplify installation / compilation for CUDA?
 - Use point closest to the voxel center for better accuracy.
 - Add a spatial tiling mechanism? (First pass of a Lite NN `binary seg` + PCA for overlapping tiles + inference + Logit average between tiles)

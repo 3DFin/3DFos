@@ -38,12 +38,12 @@ class SegmentationHeadV2(nn.Module):
 
 
 def try_load_model(ckpt_path: Path | None = None, backbone: str = "ptv3") -> dict[str, Any]:
-    """Load model checkpoint from local path or download from Github releases (torch.hub mecanism)."""
+    """Load model checkpoint from local path or download from Github releases (torch.hub mechanism)."""
     if ckpt_path and ckpt_path.is_file():
         logger.info("Loading checkpoint from local path: %s", ckpt_path)
         ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
     else:
-        model_url = f"https://github.com/3DFin/3DFos/releases/download/v0.0.1/{backbone}_3dfos_005.pth"
+        model_url = f"https://github.com/3DFin/3DFos/releases/download/v0.1.0/{backbone}_3dfos_005.pth"
         logger.info("Using torch.hub model at %s", model_url)
         ckpt = torch.hub.load_state_dict_from_url(model_url, map_location="cpu")
     return ckpt
