@@ -6,8 +6,9 @@ from pathlib import Path
 import torch
 
 import three_d_fos
-from three_d_fos.backend import inference as backend_inference
 from three_d_fos.cli.logging import setup_logging
+from three_d_fos.core import inference as backend_inference
+from three_d_fos.core.model import LITEPT_FULL_MODEL, PTV3_FULL_MODEL
 from three_d_fos.io import FilePointCloudDestination, FilePointCloudSource, SegmentationResult
 
 logger = logging.getLogger(__name__)
@@ -58,11 +59,11 @@ def main() -> None:
 
     start_model = time.time()
     if args.backbone == "ptv3":
-        config = three_d_fos.ptv3v1m1_model.model_config()
-        model = three_d_fos.seghead.load(ckpt_path=args.model_path, custom_config=config, backbone="ptv3")
+        model_definition = PTV3_FULL_MODEL
+        model = three_d_fos.seghead.load(ckpt_path=args.model_path, backbone_model=model_definition)
     elif args.backbone == "litept":
-        config = three_d_fos.liteptv1m1_model.model_config()
-        model = three_d_fos.seghead.load(ckpt_path=args.model_path, custom_config=config, backbone="litept")
+        model_definition = LITEPT_FULL_MODEL
+        model = three_d_fos.seghead.load(ckpt_path=args.model_path, backbone_model=model_definition)
     else:
         raise ValueError(f"Unsupported backbone: '{args.backbone}'. Choose from: ptv3, litept")
 
@@ -72,17 +73,15 @@ def main() -> None:
     start_data = time.time()
     logger.info("Loading data from %s...", args.input_path)
 
-    source = FilePointCloudSource(args.input_path)
+    source = FilePointCloudSource(args.input_path, model_definition.features)
     data = source.load()
-
-    dist_axes, z0 = backend_inference.normalize_scalar_fields(data.dist_axes, data.z0)
     original_coord = data.xyz.copy()
 
     logger.info("Data loaded in %.2f seconds.", time.time() - start_data)
 
     start_preproc = time.time()
     logger.info("Running Preprocessing...")
-    point_features, remap_ids, _ = backend_inference.preprocess(data.xyz, z0, dist_axes, args.grid_size)
+    point_features, remap_ids, _ = backend_inference.preprocess(data, args.grid_size)
     logger.info("Preprocessing done in %.2f seconds.", time.time() - start_preproc)
 
     start_infer = time.time()

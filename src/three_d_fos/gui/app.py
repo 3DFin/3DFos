@@ -26,7 +26,8 @@ from PySide6.QtWidgets import (
 )
 
 import three_d_fos
-from three_d_fos.backend import inference as backend_inference
+from three_d_fos.core import inference as backend_inference
+from three_d_fos.core.model import LITEPT_FULL_MODEL, PTV3_FULL_MODEL, Model
 from three_d_fos.io import (
     FilePointCloudDestination,
     FilePointCloudSource,
@@ -49,7 +50,7 @@ class InferenceWorker(QThread):
         destination: PointCloudDestination,
         device: torch.device,
         grid_size: float,
-        backbone: str,
+        backbone: Model,
         tiling_factor: int,
     ):
         super().__init__()
@@ -64,17 +65,14 @@ class InferenceWorker(QThread):
         """Run inference on the point cloud and save results."""
         try:
             self.progress.emit("Loading / Downloading model, please wait...")
-            self._load_model(self.backbone.lower())
+            self._load_model(self.backbone)
 
             self.progress.emit("Loading point cloud data...")
             data = self.source.load()
-
-            self.progress.emit("Normalizing scalar fields...")
-            dist_axes, z0 = backend_inference.normalize_scalar_fields(data.dist_axes, data.z0)
             original_coord = data.xyz.copy()
 
             self.progress.emit("Preprocessing...")
-            point_features, remap_ids, _ = backend_inference.preprocess(data.xyz, z0, dist_axes, self.grid_size)
+            point_features, remap_ids, _ = backend_inference.preprocess(data, self.grid_size)
 
             self.progress.emit("Running inference...")
             with torch.no_grad():
@@ -92,19 +90,11 @@ class InferenceWorker(QThread):
         except Exception as e:
             self.error.emit(str(e))
 
-    def _load_model(self, backbone: str = "ptv3") -> None:
+    def _load_model(self, model_definition: Model) -> None:
         """Load the segmentation model (in the device)."""
 
-        # TODO: refactor (duplicated in CLI)
         try:
-            if backbone == "ptv3":
-                config = three_d_fos.ptv3v1m1_model.model_config()
-                self.model = three_d_fos.seghead.load(ckpt_path=None, custom_config=config, backbone="ptv3")
-            elif backbone == "litept":
-                config = three_d_fos.liteptv1m1_model.model_config()
-                self.model = three_d_fos.seghead.load(ckpt_path=None, custom_config=config, backbone="litept")
-            else:
-                raise ValueError(f"Unsupported backbone: '{backbone}'. Choose from: ptv3, litept")
+            self.model = three_d_fos.seghead.load(ckpt_path=None, backbone_model=model_definition)
             # Move model to target device immediately
             self.model.to(self.device).eval()
         except Exception as e:
@@ -124,6 +114,7 @@ class MainWidget(QWidget):
         self.worker: InferenceWorker | None = None
         self.current_source: PointCloudSource | None = None
         self.current_destination: PointCloudDestination | None = None
+        self.current_backbone: Model | None
 
         self._setup_ui()
 
@@ -166,6 +157,8 @@ class MainWidget(QWidget):
         self.backbone_in = QComboBox()
         self.backbone_in.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         self.backbone_in.addItems(["PTv3", "LitePT"])
+        self.backbone_in.currentTextChanged.connect(self._on_backbone_changed)
+        self.current_backbone = PTV3_FULL_MODEL
         parameters_layout.addWidget(self.backbone_lbl, 1, 0)
         parameters_layout.addWidget(self.backbone_in, 1, 1)
 
@@ -233,6 +226,16 @@ class MainWidget(QWidget):
         """Handle device selection."""
         self.device = torch.device(device_str)
 
+    def _on_backbone_changed(self, backbone_str: str) -> None:
+        """Handle backbone selection"""
+        # Determine model definition based on backbone selection
+        if backbone_str.lower() == "ptv3":
+            self.current_backbone = PTV3_FULL_MODEL
+        elif backbone_str.lower() == "litept":
+            self.current_backbone = LITEPT_FULL_MODEL
+        else:
+            raise ValueError(f"Unsupported backbone: '{backbone_str}'. Choose from: ptv3, litept")
+
     def _on_select_file(self) -> None:
         """Handle file selection."""
         filepath, _ = QFileDialog.getOpenFileName(
@@ -243,7 +246,7 @@ class MainWidget(QWidget):
         )
 
         if filepath:
-            self.current_source = FilePointCloudSource(Path(filepath))
+            self.current_source = FilePointCloudSource(Path(filepath), self.current_backbone.features)
             self.source_in.setText(self.current_source.get_name())
             self.run_btn.setEnabled(True)
             self.status_lbl.setText("Source loaded, ready for inference")
@@ -283,7 +286,7 @@ class MainWidget(QWidget):
             destination=self.current_destination,
             device=self.device,
             grid_size=float(self.grid_size_in.text()),
-            backbone=self.backbone_in.currentText(),
+            backbone=self.current_backbone,
             tiling_factor=int(self.tiling_factor_in.text()),
         )
 

@@ -1,10 +1,3 @@
-"""
-Backend inference module
-
-Authors: Romain Janvier, Diego Laíño Rebollido, Carlos Cabo, Diego
-Copyright: Department of Mining Exploitation of the University of Oviedo (Spain)
-"""
-
 import logging
 import time
 
@@ -13,32 +6,21 @@ import pgeof
 import torch
 from dendroptimized import voxelize
 from nanotsparse.nn import functional as F
+from numpy._core.numeric import normalize_axis_tuple
 
 import three_d_fos
 from three_d_fos.backend.tiling import RecursiveMainXYAxisTilingMask
+from three_d_fos.io import PointCloudData
 
 logger = logging.getLogger(__name__)
 
-# Feature normalization constants
-DIST_AXES_SCALE = 15.0
-Z0_SCALE = 30.0
-
-
-def normalize_scalar_fields(dist_axes: np.ndarray, z0: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Normalize 3DFin scalar fields to [0, 1] range."""
-    dist_axes = np.clip(dist_axes / DIST_AXES_SCALE, 0.0, 1.0)
-    z0 = np.clip(z0 / Z0_SCALE, 0.0, 1.0)
-    return dist_axes, z0
-
 
 def preprocess(
-    xyz: np.ndarray,
-    z0: np.ndarray,
-    dist_axes: np.ndarray,
+    data: PointCloudData,
     grid_size: float,
 ) -> tuple[dict, np.ndarray, np.ndarray]:
     """Voxelize and compute normals."""
-    xyz = xyz.astype(np.float64)
+    xyz = data.xyz.astype(np.float64)
     voxelated_cloud, remap_ids, sample_ids = voxelize(xyz, grid_size, grid_size, 5, with_n_points=False, verbose=False)
 
     # Resample the data according to the voxelization.
@@ -59,25 +41,24 @@ def preprocess(
         ],
     )
 
-    # Zxpand vector features for concat with normals
-    z0 = np.expand_dims(z0[sample_ids], axis=1).astype(np.float32)
-    dist_axes = np.expand_dims(dist_axes[sample_ids], axis=1).astype(np.float32)
+    normals = normals.astype(np.float32)
+    if data.features is not None:
+        features = np.concatenate([normals, data.features.astype(np.float32)[sample_ids]], axis=1)
+    else:
+        features = normalize_axis_tuple
 
-    # Concatenate z0, normal and dist_axes features
-    features = np.concatenate([normals.astype(np.float32), z0, dist_axes], axis=1)
-
-    features = {
+    data_dict = {
         "grid_size": grid_size,
         "grid_coord": grid_coords,
         "coord": (xyz_sampled - global_shift).astype(np.float32),  # shift cloud to avoid quantization / stabilize
         "feat": features,
     }
 
-    return features, remap_ids, sample_ids
+    return data_dict, remap_ids, sample_ids
 
 
 def run_inference(model: torch.nn.Module, data: dict, device: torch.device, tiling_factor: int) -> np.ndarray:
-    """Perform tiled inference inference if needed and return raw classification labels."""
+    """Perform tiled inference if needed and return raw classification labels."""
 
     transform = three_d_fos.transform.transform_config()
 
