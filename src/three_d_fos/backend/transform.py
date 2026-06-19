@@ -5,19 +5,18 @@ Author: Xiaoyang Wu (xiaoyang.wu.cs@gmail.com)
 Please cite our work if the code is helpful to you.
 """
 
-import numbers
+from collections.abc import Mapping, Sequence
+
 import numpy as np
 import torch
-import copy
-from collections.abc import Sequence, Mapping
 
-from three_d_fos.registry import Registry
+from three_d_fos.backend.registry import Registry
 
 TRANSFORMS = Registry("transforms")
 
 
 @TRANSFORMS.register_module()
-class Collect(object):
+class Collect:
     def __init__(self, keys, offset_keys_dict=None, **kwargs):
         """
         e.g. Collect(keys=[coord], feat_keys=[coord, color])
@@ -42,8 +41,9 @@ class Collect(object):
             data[name] = torch.cat([data_dict[key].float() for key in keys], dim=1)
         return data
 
+
 @TRANSFORMS.register_module()
-class ToTensor(object):
+class ToTensor:
     def __call__(self, data):
         if isinstance(data, torch.Tensor):
             return data
@@ -69,7 +69,8 @@ class ToTensor(object):
         else:
             raise TypeError(f"type {type(data)} cannot be converted to tensor.")
 
-class Compose(object):
+
+class Compose:
     def __init__(self, cfg=None):
         self.cfg = cfg if cfg is not None else []
         self.transforms = []
@@ -80,6 +81,7 @@ class Compose(object):
         for t in self.transforms:
             data_dict = t(data_dict)
         return data_dict
+
 
 def transform_config():
     config = [

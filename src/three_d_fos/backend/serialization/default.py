@@ -20,12 +20,12 @@ Please cite our work if the code is helpful to you.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import torch
-from .z_order import xyz2key as z_order_encode_
-from .z_order import key2xyz as z_order_decode_
-from .hilbert import encode as hilbert_encode_
-from .hilbert import decode as hilbert_decode_
+
+from three_d_fos.backend.serialization.hilbert import decode as hilbert_decode_
+from three_d_fos.backend.serialization.hilbert import encode as hilbert_encode_
+from three_d_fos.backend.serialization.z_order import key2xyz as z_order_decode_
+from three_d_fos.backend.serialization.z_order import xyz2key as z_order_encode_
 
 
 @torch.inference_mode()

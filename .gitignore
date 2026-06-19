@@ -16,3 +16,4 @@ outputs/
 **/*.out
 Dockerfile
 .venv
+seg_result.las

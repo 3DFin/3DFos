@@ -6,14 +6,13 @@ Author: Xiaoyang Wu (xiaoyang.wu.cs@gmail.com)
 Please cite our work if the code is helpful to you.
 """
 
-import sys
-import torch.nn as nn
 from collections import OrderedDict
 
 from nanotsparse.nn import Conv3d
 from nanotsparse.tensor import SparseTensor
+from torch import nn
 
-from three_d_fos.structure import Point
+from three_d_fos.backend.structure import Point
 
 
 class PointModule(nn.Module):
@@ -40,15 +39,13 @@ class PointSequential(PointModule):
             for idx, module in enumerate(args):
                 self.add_module(str(idx), module)
         for name, module in kwargs.items():
-            if sys.version_info < (3, 6):
-                raise ValueError("kwargs only supported in py36+")
             if name in self._modules:
                 raise ValueError("name exists.")
             self.add_module(name, module)
 
     def __getitem__(self, idx):
         if not (-len(self) <= idx < len(self)):
-            raise IndexError("index {} is out of range".format(idx))
+            raise IndexError(f"index {idx} is out of range")
         if idx < 0:
             idx += len(self)
         it = iter(self._modules.values())
@@ -79,14 +76,13 @@ class PointSequential(PointModule):
                 else:
                     input = module(input)
             # PyTorch module
+            elif isinstance(input, Point):
+                input.feat = module(input.feat)
+                if "sparse_conv_feat" in input.keys():
+                    input.sparse_conv_feat.F = input.feat
+            elif isinstance(input, SparseTensor):
+                if input.indices.shape[0] != 0:
+                    input.sparse_conv_feat.F = input.feat
             else:
-                if isinstance(input, Point):
-                    input.feat = module(input.feat)
-                    if "sparse_conv_feat" in input.keys():
-                        input.sparse_conv_feat.F = input.feat
-                elif isinstance(input, SparseTensor):
-                    if input.indices.shape[0] != 0:
-                        input.sparse_conv_feat.F = input.feat
-                else:
-                    input = module(input)
+                input = module(input)
         return input

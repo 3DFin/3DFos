@@ -5,7 +5,7 @@ build-backend = "uv_build"
 [project]
 name = "3DFos"
 version = "0.1.0"
-description = "Forestry standalone inference "
+description = "Forestry Inference based on PointCept models"
 requires-python = ">=3.12.0,<3.14.0"
 readme = "README.md"
 
@@ -19,14 +19,18 @@ dependencies = [
     "plyfile>=1.1.2",
 ]
 
+[dependency-groups]
+dev = [
+    "ruff",
+]
+
 [project.optional-dependencies]
-flash-attn = ["flash-attn==2.8.3"]
 nanotsparsecuda = ["nanotsparse>=2.2.0"]
 cpu = [
     "torch~=2.12.0",
     "torch-geometric>=2.6.1",
     "torchvision~=0.27.0",
-    "nanotsparse>=2.2.0"
+    "nanotsparse>=2.2.3"
 ]
 cu130 = [
     "torch~=2.12.0",
@@ -38,16 +42,18 @@ cu128 = [
     "torch-geometric>=2.6.1",
     "torchvision~=0.26.0",
 ]
+gui = [
+    "pyside6>=6.8.1",
+]
 
 [tool.uv.build-backend]
 module-name = "three_d_fos"
 
 [tool.uv]
-no-build-isolation-package = ["flash-attn", "nanotsparse"]
+no-build-isolation-package = ["nanotsparse"]
 conflicts = [[{ extra = "cpu" }, { extra = "cu130" }, { extra = "cu128" }], [{extra ="cpu"}, {extra="nanotsparsecuda"}]]
 dependency-metadata = [
-    { name = "flash-attn", version = "2.8.3", requires-dist = ["torch", "setuptools", "einops"] },
-    { name = "nanotsparse", version = "2.2.0", requires-dist = ["torch", "setuptools", "ninja"] },
+    { name = "nanotsparse", version = "2.2.3", requires-dist = ["torch", "setuptools", "ninja"] },
 ]
 
 [tool.uv.sources]
@@ -78,5 +84,32 @@ name = "pytorch-cu128"
 url = "https://download.pytorch.org/whl/cu128"
 explicit = true
 
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501", "N806", "N803", "N812", "E402"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = ["F401"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint.isort]
+known-first-party = ["three_d_fos"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+# General entry points
 [project.scripts]
-3DFos = "three_d_fos.inference:main" # inference tailored for 3DFin
+3DFos = "three_d_fos.cli.main:main"
+3DFos-gui = "three_d_fos.gui.app:main"
+
+# Entry point for CloudCompare plugin
+[project.entry-points."cloudcompare.plugins"]
+3DFos = "three_d_fos.cloudcompare.plugin:ThreeDFosCC"

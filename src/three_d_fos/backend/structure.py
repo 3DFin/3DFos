@@ -6,13 +6,11 @@ Please cite our work if the code is helpful to you.
 """
 
 import torch
-
 from addict import Dict
-
 from nanotsparse.tensor import SparseTensor
 
-from three_d_fos.serialization import encode
-from three_d_fos.utils import offset2batch, batch2offset
+from three_d_fos.backend.serialization import encode
+from three_d_fos.backend.utils import batch2offset, offset2batch
 
 
 class Point(Dict):
@@ -84,17 +82,13 @@ class Point(Dict):
         #  Order2 ([n]),
         #   ...
         #  OrderN ([n])] (k, n)
-        code = [
-            encode(self.grid_coord, self.batch, depth, order=order_) for order_ in order
-        ]
+        code = [encode(self.grid_coord, self.batch, depth, order=order_) for order_ in order]
         code = torch.stack(code)
         order = torch.argsort(code)
         inverse = torch.zeros_like(order).scatter_(
             dim=1,
             index=order,
-            src=torch.arange(0, code.shape[1], device=order.device).repeat(
-                code.shape[0], 1
-            ),
+            src=torch.arange(0, code.shape[1], device=order.device).repeat(code.shape[0], 1),
         )
 
         if shuffle_orders:
@@ -130,17 +124,18 @@ class Point(Dict):
         if "sparse_shape" in self.keys():
             sparse_shape = self.sparse_shape
         else:
-            batch_size=self.batch[-1].tolist() + 1
-            sparse_range = torch.add(
-                torch.max(self.grid_coord, dim=0).values, 0
-            ).tolist()
-            sparse_shape = (batch_size, sparse_range[0], sparse_range[1], sparse_range[2])
+            batch_size = self.batch[-1].tolist() + 1
+            sparse_range = torch.add(torch.max(self.grid_coord, dim=0).values, 0).tolist()
+            sparse_shape = (
+                batch_size,
+                sparse_range[0],
+                sparse_range[1],
+                sparse_range[2],
+            )
 
         sparse_conv_feat = SparseTensor(
             feats=self.feat,
-            coords=torch.cat(
-                [self.batch.unsqueeze(-1).int(), self.grid_coord.int()], dim=1
-            ).contiguous(),
+            coords=torch.cat([self.batch.unsqueeze(-1).int(), self.grid_coord.int()], dim=1).contiguous(),
             spatial_range=sparse_shape,
         )
         self["sparse_shape"] = sparse_shape
