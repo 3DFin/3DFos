@@ -10,7 +10,6 @@ from functools import partial
 import torch
 from addict import Dict
 from nanotsparse.nn import Conv3d
-from nanotsparse.nn import functional as F
 from torch import nn
 from torch.nn.functional import scaled_dot_product_attention
 
@@ -18,96 +17,58 @@ from three_d_fos.backend.module import PointModule, PointSequential
 from three_d_fos.backend.structure import Point
 from three_d_fos.backend.utils import do_support_flash_attn, offset2bincount
 
-try:
-    import pointrope as _kernels
 
-    class PointROPEFunc(torch.autograd.Function):
-        @staticmethod
-        def forward(ctx, tokens, positions, base, F0=1):
-            ctx.save_for_backward(positions)
-            ctx.saved_base = base
-            ctx.saved_F0 = F0
-            # tokens = tokens.clone() # uncomment this if inplace doesn't work
-            _kernels.pointrope(tokens, positions, base, F0)
-            ctx.mark_dirty(tokens)
-            return tokens
+class PointROPE(torch.nn.Module):
+    def __init__(self, freq=100.0, F0=1.0):
+        super().__init__()
+        self.base = freq
+        self.F0 = F0
+        self.cache = {}
 
-        @staticmethod
-        def backward(ctx, grad_res):
-            positions, base, F0 = ctx.saved_tensors[0], ctx.saved_base, ctx.saved_F0
-            _kernels.pointrope(grad_res, positions, base, -F0)
-            ctx.mark_dirty(grad_res)
-            return grad_res, None, None, None
+    def get_cos_sin(self, D, seq_len, device, dtype):
+        if (D, seq_len, device, dtype) not in self.cache:
+            inv_freq = self.F0 / (self.base ** (torch.arange(0, D, 2).float().to(device) / D))
+            t = torch.arange(seq_len, device=device, dtype=inv_freq.dtype)
+            freqs = torch.einsum("i,j->ij", t, inv_freq).to(dtype)
+            freqs = torch.cat((freqs, freqs), dim=-1)
+            cos = freqs.cos()
+            sin = freqs.sin()
+            self.cache[D, seq_len, device, dtype] = (cos, sin)
+        return self.cache[D, seq_len, device, dtype]
 
-    class PointROPE(torch.nn.Module):
-        def __init__(self, freq=100.0, F0=1.0):
-            super().__init__()
-            self.base = freq
-            self.F0 = F0
+    @staticmethod
+    def rotate_half(x):
+        x1, x2 = x[..., : x.shape[-1] // 2], x[..., x.shape[-1] // 2 :]
+        return torch.cat((-x2, x1), dim=-1)
 
-        def forward(self, tokens, positions):
-            tokens = tokens.transpose(1, 2).contiguous()
-            positions = positions.contiguous()
-            tokens = PointROPEFunc.apply(tokens, positions, self.base, self.F0)
-            return tokens.transpose(1, 2).contiguous()
+    def apply_rope1d(self, tokens, pos1d, cos, sin):
+        assert pos1d.ndim == 2
+        cos = torch.nn.functional.embedding(pos1d, cos)[:, None, :, :]
+        sin = torch.nn.functional.embedding(pos1d, sin)[:, None, :, :]
+        return (tokens * cos) + (self.rotate_half(tokens) * sin)
 
-except Exception:
-    # print(
-    #    f"[PointROPE] CUDA implementation unavailable ({type(e).__name__}: {e}). "
-    #    "Using slower Pytorch fallback."
-    # )
-
-    class PointROPE(torch.nn.Module):
-        def __init__(self, freq=100.0, F0=1.0):
-            super().__init__()
-            self.base = freq
-            self.F0 = F0
-            self.cache = {}
-
-        def get_cos_sin(self, D, seq_len, device, dtype):
-            if (D, seq_len, device, dtype) not in self.cache:
-                inv_freq = self.F0 / (self.base ** (torch.arange(0, D, 2).float().to(device) / D))
-                t = torch.arange(seq_len, device=device, dtype=inv_freq.dtype)
-                freqs = torch.einsum("i,j->ij", t, inv_freq).to(dtype)
-                freqs = torch.cat((freqs, freqs), dim=-1)
-                cos = freqs.cos()
-                sin = freqs.sin()
-                self.cache[D, seq_len, device, dtype] = (cos, sin)
-            return self.cache[D, seq_len, device, dtype]
-
-        @staticmethod
-        def rotate_half(x):
-            x1, x2 = x[..., : x.shape[-1] // 2], x[..., x.shape[-1] // 2 :]
-            return torch.cat((-x2, x1), dim=-1)
-
-        def apply_rope1d(self, tokens, pos1d, cos, sin):
-            assert pos1d.ndim == 2
-            cos = torch.nn.functional.embedding(pos1d, cos)[:, None, :, :]
-            sin = torch.nn.functional.embedding(pos1d, sin)[:, None, :, :]
-            return (tokens * cos) + (self.rotate_half(tokens) * sin)
-
-        def forward(self, tokens, positions, max_seqlen=None):
-            """
-            input:
-                * tokens: batch_size x nheads x ntokens x dim
-                * positions: batch_size x ntokens x 3 (xyz position of each token)
-            output:
-                * tokens after appplying PointROPE (batch_size x nheads x ntokens x dim)
-            """
-            assert tokens.size(3) % 3 == 0, "number of dimensions should be a multiple of three"
-            D = tokens.size(3) // 3
-            assert positions.ndim == 3 and positions.shape[-1] == 3  # Batch, Seq, 3
-            if max_seqlen is None:
-                cos, sin = self.get_cos_sin(D, int(positions.max()) + 1, tokens.device, tokens.dtype)
-            else:  # use dynamic sequence length according to batched input
-                cos, sin = self.get_cos_sin(D, max_seqlen + 1, tokens.device, tokens.dtype)
-            # split features into three parts along the feature dimension, and apply rope1d on each subspace
-            x, y, z = tokens.chunk(3, dim=-1)
-            x = self.apply_rope1d(x, positions[:, :, 0], cos, sin)
-            y = self.apply_rope1d(y, positions[:, :, 1], cos, sin)
-            z = self.apply_rope1d(z, positions[:, :, 2], cos, sin)
-            tokens = torch.cat((x, y, z), dim=-1)
-            return tokens
+    def forward(self, tokens, positions, max_seqlen=None):
+        """
+        input:
+            * tokens: batch_size x nheads x ntokens x dim
+            * positions: batch_size x ntokens x 3 (xyz position of each token)
+        output:
+            * tokens after appplying PointROPE (batch_size x nheads x ntokens x dim)
+        """
+        assert tokens.size(3) % 3 == 0, "number of dimensions should be a multiple of three"
+        D = tokens.size(3) // 3
+        assert positions.ndim == 3 and positions.shape[-1] == 3  # Batch, Seq, 3
+        if max_seqlen is None:
+            cos, sin = self.get_cos_sin(D, int(positions.max()) + 1, tokens.device, tokens.dtype)
+        else:  # use dynamic sequence length according to batched input
+            cos, sin = self.get_cos_sin(D, max_seqlen + 1, tokens.device, tokens.dtype)
+        # split features into three parts along the feature dimension, and apply rope1d on each subspace
+        x, y, z = tokens.chunk(3, dim=-1)
+        x = self.apply_rope1d(x, positions[:, :, 0], cos, sin)
+        y = self.apply_rope1d(y, positions[:, :, 1], cos, sin)
+        z = self.apply_rope1d(z, positions[:, :, 2], cos, sin)
+        tokens = torch.cat((x, y, z), dim=-1)
+        return tokens
 
 
 class PointROPEAttention(PointModule):
@@ -149,8 +110,8 @@ class PointROPEAttention(PointModule):
     def get_padding_and_inverse(self, point):
         pad_key = "pad"
         unpad_key = "unpad"
-        cu_seqlens_key = "cu_seqlens_key"
-        if pad_key not in point.keys() or unpad_key not in point.keys() or cu_seqlens_key not in point.keys():
+        # cu_seqlens_key = "cu_seqlens_key"
+        if pad_key not in point.keys() or unpad_key not in point.keys():  # or cu_seqlens_key not in point.keys():
             offset = point.offset
             bincount = offset2bincount(offset)
             bincount_pad = (
@@ -240,9 +201,7 @@ class PointROPEAttention(PointModule):
         q = qkv[:, :, 0]
         k = qkv[:, :, 1]
         v = qkv[:, :, 2]
-        feat = scaled_dot_product_attention(
-            q, k, v, scale=self.scale, dropout_p=self.attn_drop if self.training else 0
-        ).reshape(-1, C)
+        feat = scaled_dot_product_attention(q, k, v, scale=self.scale, dropout_p=0.0).reshape(-1, C)
 
         if point.feat.is_cuda:
             feat = feat[inverse].float()
