@@ -77,7 +77,7 @@ i.e on `Windows Developer PowerShell` terminal session.
 
 ```
 $env:DISTUTILS_USE_SDK = 1
-uv sync --extra cu130 --extra nanotsparse
+uv sync --extra cu130 --extra nanotsparsecuda
 ```
 
 ## Usage
@@ -110,7 +110,7 @@ You can adapt the voxel size. For example, you could run inference at a 0.01 m v
 
 ## Funding
 
-PTV3-3DFos has been developed at the Centre of Wildfire Research of Swansea University (UK) in collaboration with the Research Institute of Biodiversity (CSIC, Spain) and the Department of Mining Exploitation of the University of Oviedo (Spain).
+3DFos has been developed at the Centre of Wildfire Research of Swansea University (UK) in collaboration with the Research Institute of Biodiversity (CSIC, Spain) and the Department of Mining Exploitation of the University of Oviedo (Spain).
 
 Funding provided by the UK NERC project (NE/T001194/1):
 
