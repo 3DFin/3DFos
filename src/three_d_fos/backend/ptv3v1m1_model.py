@@ -9,7 +9,6 @@ import math
 from functools import partial
 
 import torch
-import torch_geometric
 from addict import Dict
 from nanotsparse.nn import Conv3d
 from torch import nn
@@ -420,8 +419,8 @@ class SerializedPooling(PointModule):
 
         # collect information
         point_dict = Dict(
-            feat=torch_geometric.utils.segment(self.proj(point.feat)[indices], idx_ptr, reduce=self.reduce),
-            coord=torch_geometric.utils.segment(point.coord[indices], idx_ptr, reduce="mean"),
+            feat=torch.segment_reduce(self.proj(point.feat)[indices], offsets=idx_ptr, reduce=self.reduce),
+            coord=torch.segment_reduce(point.coord[indices], offsets=idx_ptr, reduce="mean"),
             grid_coord=point.grid_coord[head_indices] >> pooling_depth,
             serialized_code=code,
             serialized_order=order,
