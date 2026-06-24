@@ -16,7 +16,7 @@ setup_logging()
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="3D Point Cloud Segmentation for forestry applications.")
-    parser.add_argument("input_path", type=Path, help="Path to the input PLY file")
+    parser.add_argument("input_path", type=Path, help="Path to the input PLY or LAS file")
     parser.add_argument("--model_path", type=Path, help="Path to the model file (.pth)")
     parser.add_argument(
         "--output_path",

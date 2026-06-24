@@ -213,9 +213,7 @@ class SerializedAttention(PointModule):
             q = qkv[:, :, 0]
             k = qkv[:, :, 1]
             v = qkv[:, :, 2]
-            feat = scaled_dot_product_attention(
-                q, k, v, scale=self.scale, dropout_p=self.attn_drop if self.training else 0
-            ).reshape(-1, C)
+            feat = scaled_dot_product_attention(q, k, v, scale=self.scale, dropout_p=0.0).reshape(-1, C)
         else:
             qkv_reshaped = qkv.reshape(-1, 3, H, C // H)
             q = qkv_reshaped[:, 0]
