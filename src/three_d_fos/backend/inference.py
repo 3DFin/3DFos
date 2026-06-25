@@ -5,11 +5,19 @@ Authors: Romain Janvier, Diego Laíño Rebollido, Carlos Cabo, Diego
 Copyright: Department of Mining Exploitation of the University of Oviedo (Spain)
 """
 
+import logging
+import time
+
 import numpy as np
 import pgeof
 import torch
 from dendroptimized import voxelize
 from nanotsparse.nn import functional as F
+
+import three_d_fos
+from three_d_fos.backend.tiling import RecursiveMainXYAxisTilingMask
+
+logger = logging.getLogger(__name__)
 
 # Feature normalization constants
 DIST_AXES_SCALE = 15.0
@@ -24,7 +32,10 @@ def normalize_scalar_fields(dist_axes: np.ndarray, z0: np.ndarray) -> tuple[np.n
 
 
 def preprocess(
-    xyz: np.ndarray, z0: np.ndarray, dist_axes: np.ndarray, grid_size: float
+    xyz: np.ndarray,
+    z0: np.ndarray,
+    dist_axes: np.ndarray,
+    grid_size: float,
 ) -> tuple[dict, np.ndarray, np.ndarray]:
     """Voxelize and compute normals."""
     xyz = xyz.astype(np.float64)
@@ -48,25 +59,69 @@ def preprocess(
         ],
     )
 
+    # Zxpand vector features for concat with normals
+    z0 = np.expand_dims(z0[sample_ids], axis=1).astype(np.float32)
+    dist_axes = np.expand_dims(dist_axes[sample_ids], axis=1).astype(np.float32)
+
+    # Concatenate z0, normal and dist_axes features
+    features = np.concatenate([normals.astype(np.float32), z0, dist_axes], axis=1)
+
     features = {
         "grid_size": grid_size,
         "grid_coord": grid_coords,
         "coord": (xyz_sampled - global_shift).astype(np.float32),  # shift cloud to avoid quantization / stabilize
-        "normal": normals.astype(np.float32),
-        "z0": np.expand_dims(z0[sample_ids], axis=1).astype(np.float32),
-        "dist_axes": np.expand_dims(dist_axes[sample_ids], axis=1).astype(np.float32),
+        "feat": features,
     }
 
     return features, remap_ids, sample_ids
 
 
-def run_inference(
+def run_inference(model: torch.nn.Module, data: dict, device: torch.device, tiling_factor: int) -> np.ndarray:
+    """Perform tiled inference inference if needed and return raw classification labels."""
+
+    transform = three_d_fos.transform.transform_config()
+
+    if tiling_factor > 0:
+        num_base_points = data["coord"].shape[0]
+        all_labels = np.zeros(num_base_points, dtype=np.int64)
+
+        tiler = RecursiveMainXYAxisTilingMask(tiling_factor)
+        tile_mask = tiler.tile(data["coord"])
+        unique_tile_ids = np.unique(tile_mask)
+
+        for tile_id in unique_tile_ids:
+            tile_data = {
+                "grid_size": data["grid_size"],
+                "grid_coord": data["grid_coord"][tile_mask == tile_id],
+                "coord": data["coord"][tile_mask == tile_id],
+                "feat": data["feat"][tile_mask == tile_id],
+            }
+
+            transformed_data = transform(tile_data)
+            start_infer_tile = time.time()
+            logger.info("Running inference on tile %i/%i...", tile_id, len(unique_tile_ids))
+            tile_mask_indicator = tile_mask == tile_id
+
+            # Run inference on this tile
+            tile_labels = run_inference_one_tile(model, transformed_data, device)
+
+            # Store labels at the correct remap_ids positions
+            all_labels[tile_mask_indicator] = tile_labels
+            logger.info("Inference on tile done in %.2f seconds.", time.time() - start_infer_tile)
+        # remap the labels to the original PC
+        return all_labels
+    else:
+        transformed_data = transform(data)
+        return run_inference_one_tile(model, transformed_data, device)
+
+
+def run_inference_one_tile(
     model: torch.nn.Module,
     data: dict,
-    remap_ids: np.ndarray,
     device: torch.device,
 ) -> np.ndarray:
     """Perform inference and return raw classification labels."""
+
     with torch.inference_mode():
         for key in data:
             if isinstance(data[key], torch.Tensor):
@@ -84,4 +139,4 @@ def run_inference(
         F.conv_config.set_global_conv_config(nanots_config)
 
         predictions = model(data)
-        return predictions["seg_logits"][remap_ids].argmax(dim=-1).cpu().numpy()
+        return predictions["seg_logits"].argmax(dim=-1).cpu().numpy()
