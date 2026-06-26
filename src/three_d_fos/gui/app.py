@@ -50,6 +50,7 @@ class InferenceWorker(QThread):
         device: torch.device,
         grid_size: float,
         backbone: str,
+        tiling_factor: int,
     ):
         super().__init__()
         self.source = source
@@ -57,6 +58,7 @@ class InferenceWorker(QThread):
         self.device = device
         self.grid_size = grid_size
         self.backbone = backbone
+        self.tiling_factor = tiling_factor
 
     def run(self) -> None:
         """Run inference on the point cloud and save results."""
@@ -74,12 +76,11 @@ class InferenceWorker(QThread):
             self.progress.emit("Preprocessing...")
             point_features, remap_ids, _ = backend_inference.preprocess(data.xyz, z0, dist_axes, self.grid_size)
 
-            transform = three_d_fos.transform.transform_config()
-            transformed_point = transform(point_features)
-
             self.progress.emit("Running inference...")
             with torch.no_grad():
-                labels = backend_inference.run_inference(self.model, transformed_point, remap_ids, self.device)
+                labels = backend_inference.run_inference(self.model, point_features, self.device, self.tiling_factor)[
+                    remap_ids
+                ]
 
             self.progress.emit("Saving results...")
             result = SegmentationResult(original_coord=original_coord, labels=labels)
@@ -160,6 +161,14 @@ class MainWidget(QWidget):
         parameters_layout.addWidget(self.device_lbl, 0, 0)
         parameters_layout.addWidget(self.device_in, 0, 1)
 
+        # Backbone
+        self.backbone_lbl = QLabel("Backbone")
+        self.backbone_in = QComboBox()
+        self.backbone_in.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        self.backbone_in.addItems(["PTv3", "LitePT"])
+        parameters_layout.addWidget(self.backbone_lbl, 1, 0)
+        parameters_layout.addWidget(self.backbone_in, 1, 1)
+
         # Voxel size
         self.grid_size_lbl = QLabel("Voxel size")
         self.grid_size_in = QLineEdit("0.05")
@@ -168,16 +177,18 @@ class MainWidget(QWidget):
         voxel_validator.setLocale(QLocale.c())
         self.grid_size_in.setValidator(voxel_validator)
 
-        parameters_layout.addWidget(self.grid_size_lbl, 1, 0)
-        parameters_layout.addWidget(self.grid_size_in, 1, 1)
+        parameters_layout.addWidget(self.grid_size_lbl, 2, 0)
+        parameters_layout.addWidget(self.grid_size_in, 2, 1)
 
-        # Backbone
-        self.backbone_lbl = QLabel("Backbone")
-        self.backbone_in = QComboBox()
-        self.backbone_in.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        self.backbone_in.addItems(["PTv3", "LitePT"])
-        parameters_layout.addWidget(self.backbone_lbl, 2, 0)
-        parameters_layout.addWidget(self.backbone_in, 2, 1)
+        # Tiling factor
+        self.tiling_factor_lbl = QLabel("Tiling factor")
+        self.tiling_factor_in = QLineEdit("0")
+        self.tiling_factor_in.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
+        tiling_validator = QDoubleValidator(0, 10, 0)
+        tiling_validator.setLocale(QLocale.c())
+        self.tiling_factor_in.setValidator(tiling_validator)
+        parameters_layout.addWidget(self.tiling_factor_lbl, 3, 0)
+        parameters_layout.addWidget(self.tiling_factor_in, 3, 1)
 
         # Input selection
         self.source_lbl = QLabel("Input path")
@@ -185,9 +196,9 @@ class MainWidget(QWidget):
         self.source_in.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self.select_file_btn = QPushButton("Open file")
         self.select_file_btn.clicked.connect(self._on_select_file)
-        parameters_layout.addWidget(self.source_lbl, 3, 0)
-        parameters_layout.addWidget(self.source_in, 3, 1)
-        parameters_layout.addWidget(self.select_file_btn, 3, 2)
+        parameters_layout.addWidget(self.source_lbl, 4, 0)
+        parameters_layout.addWidget(self.source_in, 4, 1)
+        parameters_layout.addWidget(self.select_file_btn, 4, 2)
 
         # Output selection
         self.output_path_lbl = QLabel("Output path")
@@ -195,9 +206,9 @@ class MainWidget(QWidget):
         self.output_path_in.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self.select_output_btn = QPushButton("Select path")
         self.select_output_btn.clicked.connect(self._on_select_output)
-        parameters_layout.addWidget(self.output_path_lbl, 4, 0)
-        parameters_layout.addWidget(self.output_path_in, 4, 1)
-        parameters_layout.addWidget(self.select_output_btn, 4, 2)
+        parameters_layout.addWidget(self.output_path_lbl, 5, 0)
+        parameters_layout.addWidget(self.output_path_in, 5, 1)
+        parameters_layout.addWidget(self.select_output_btn, 5, 2)
 
         main_layout.addLayout(parameters_layout)
 
@@ -273,6 +284,7 @@ class MainWidget(QWidget):
             device=self.device,
             grid_size=float(self.grid_size_in.text()),
             backbone=self.backbone_in.currentText(),
+            tiling_factor=int(self.tiling_factor_in.text()),
         )
 
         self.worker.progress.connect(self.status_lbl.setText)

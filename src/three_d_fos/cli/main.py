@@ -26,6 +26,9 @@ def main() -> None:
     )
     parser.add_argument("--grid_size", type=float, default=0.1, help="Voxel grid size")
     parser.add_argument(
+        "--tiling_factor", type=int, default=0, help="Number of tiles. Total number of tiles is 2^tiling_factor"
+    )
+    parser.add_argument(
         "--backbone",
         type=str,
         choices=["ptv3", "litept"],
@@ -54,7 +57,6 @@ def main() -> None:
     start_total = time.time()
 
     start_model = time.time()
-    transform = three_d_fos.transform.transform_config()
     if args.backbone == "ptv3":
         config = three_d_fos.ptv3v1m1_model.model_config()
         model = three_d_fos.seghead.load(ckpt_path=args.model_path, custom_config=config, backbone="ptv3")
@@ -70,7 +72,6 @@ def main() -> None:
     start_data = time.time()
     logger.info("Loading data from %s...", args.input_path)
 
-    # Use abstracted source
     source = FilePointCloudSource(args.input_path)
     data = source.load()
 
@@ -82,19 +83,16 @@ def main() -> None:
     start_preproc = time.time()
     logger.info("Running Preprocessing...")
     point_features, remap_ids, _ = backend_inference.preprocess(data.xyz, z0, dist_axes, args.grid_size)
-    transformed_point = transform(point_features)
     logger.info("Preprocessing done in %.2f seconds.", time.time() - start_preproc)
 
     start_infer = time.time()
     logger.info("Running inference...")
-    labels = backend_inference.run_inference(model, transformed_point, remap_ids, device)
+    labels = backend_inference.run_inference(model, point_features, device, args.tiling_factor)[remap_ids]
+    logger.info("Full inference done in %.2f seconds.", time.time() - start_infer)
 
-    # Use abstracted destination
     destination = FilePointCloudDestination(args.output_path)
     result = SegmentationResult(original_coord=original_coord, labels=labels)
     destination.save(result)
-
-    logger.info("Inference done in %.2f seconds.", time.time() - start_infer)
 
     logger.info("Total time: %.2f seconds.", time.time() - start_total)
 

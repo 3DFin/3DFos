@@ -88,8 +88,7 @@ def transform_config():
         dict(type="ToTensor"),
         dict(
             type="Collect",
-            keys=("coord", "grid_size", "grid_coord"),
-            feat_keys=("normal", "z0", "dist_axes"),
+            keys=("coord", "grid_size", "grid_coord", "feat"),
         ),
     ]
     return Compose(config)
