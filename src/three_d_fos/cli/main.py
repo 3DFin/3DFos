@@ -8,7 +8,7 @@ import torch
 import three_d_fos
 from three_d_fos.cli.logging import setup_logging
 from three_d_fos.core import inference as backend_inference
-from three_d_fos.core.model import LITEPT_FULL_MODEL, PTV3_FULL_MODEL
+from three_d_fos.core.model import MODEL_MAP
 from three_d_fos.io import FilePointCloudDestination, FilePointCloudSource, SegmentationResult
 
 logger = logging.getLogger(__name__)
@@ -32,9 +32,9 @@ def main() -> None:
     parser.add_argument(
         "--backbone",
         type=str,
-        choices=["ptv3", "litept"],
-        default="ptv3",
-        help="Choose backbone: ptv3 or litept",
+        choices=list(MODEL_MAP.keys()),
+        default="ptv3_full",
+        help=f"Choose backbone: {','.join(MODEL_MAP.keys())} ",
     )
 
     parser.add_argument(
@@ -42,7 +42,7 @@ def main() -> None:
         type=str,
         choices=["cuda", "cpu"] if torch.cuda.is_available() else ["cpu"],
         default="cuda" if torch.cuda.is_available() else "cpu",
-        help="Choose backbone: ptv3 or litept",
+        help="Choose device that host the computation",
     )
 
     args = parser.parse_args()
@@ -58,14 +58,8 @@ def main() -> None:
     start_total = time.time()
 
     start_model = time.time()
-    if args.backbone == "ptv3":
-        model_definition = PTV3_FULL_MODEL
-        model = three_d_fos.seghead.load(ckpt_path=args.model_path, backbone_model=model_definition)
-    elif args.backbone == "litept":
-        model_definition = LITEPT_FULL_MODEL
-        model = three_d_fos.seghead.load(ckpt_path=args.model_path, backbone_model=model_definition)
-    else:
-        raise ValueError(f"Unsupported backbone: '{args.backbone}'. Choose from: ptv3, litept")
+    model_definition = MODEL_MAP[args.backbone]
+    model = three_d_fos.seghead.load(ckpt_path=args.model_path, backbone_model=model_definition)
 
     model.to(device).eval()
     logger.info("Model loaded in %.2f seconds.", time.time() - start_model)

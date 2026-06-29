@@ -85,7 +85,7 @@ uv sync --extra cu130 --extra nanotsparsecuda
 ### CLI
 
 ```
-uv run 3DFos <path_to_the_cloud.las|ply> [--output_path seg_result.las] [--model_path model.ckpt] [--grid_size 0.05] [--backbone ptv3 | litept] [--device cuda | cpu]
+uv run 3DFos <path_to_the_cloud.las|ply> [--output_path seg_result.las] [--model_path model.ckpt] [--grid_size 0.05] [--backbone ptv3_full | litept_full] [--device cuda | cpu]
 ```
 
 ### GUI

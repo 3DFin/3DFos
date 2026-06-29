@@ -146,4 +146,7 @@ LITEPT_FULL_MODEL = Model(
 )
 
 # Model Map
-MODEL_MAP: dict[str, Model] = {"ptv3_full": PTV3_FULL_MODEL, "litept_full": LITEPT_FULL_MODEL}
+MODEL_MAP: dict[str, Model] = {
+    "ptv3_full": PTV3_FULL_MODEL,
+    "litept_full": LITEPT_FULL_MODEL,
+}

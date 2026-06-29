@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
 
 import three_d_fos
 from three_d_fos.core import inference as backend_inference
-from three_d_fos.core.model import LITEPT_FULL_MODEL, PTV3_FULL_MODEL, Model
+from three_d_fos.core.model import MODEL_MAP, Model
 from three_d_fos.io import (
     FilePointCloudDestination,
     FilePointCloudSource,
@@ -156,9 +156,10 @@ class MainWidget(QWidget):
         self.backbone_lbl = QLabel("Backbone")
         self.backbone_in = QComboBox()
         self.backbone_in.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        self.backbone_in.addItems(["PTv3", "LitePT"])
+        self.backbone_in.addItems(list(MODEL_MAP.keys()))
         self.backbone_in.currentTextChanged.connect(self._on_backbone_changed)
-        self.current_backbone = PTV3_FULL_MODEL
+        # Default to first entry
+        self.current_backbone = MODEL_MAP[self.backbone_in.currentText()]
         parameters_layout.addWidget(self.backbone_lbl, 1, 0)
         parameters_layout.addWidget(self.backbone_in, 1, 1)
 
@@ -228,13 +229,7 @@ class MainWidget(QWidget):
 
     def _on_backbone_changed(self, backbone_str: str) -> None:
         """Handle backbone selection"""
-        # Determine model definition based on backbone selection
-        if backbone_str.lower() == "ptv3":
-            self.current_backbone = PTV3_FULL_MODEL
-        elif backbone_str.lower() == "litept":
-            self.current_backbone = LITEPT_FULL_MODEL
-        else:
-            raise ValueError(f"Unsupported backbone: '{backbone_str}'. Choose from: ptv3, litept")
+        self.current_backbone = MODEL_MAP[backbone_str.lower()]
 
     def _on_select_file(self) -> None:
         """Handle file selection."""
