@@ -6,7 +6,6 @@ import pgeof
 import torch
 from dendroptimized import voxelize
 from nanotsparse.nn import functional as F
-from numpy._core.numeric import normalize_axis_tuple
 
 import three_d_fos
 from three_d_fos.backend.tiling import RecursiveMainXYAxisTilingMask
@@ -45,7 +44,7 @@ def preprocess(
     if data.features is not None:
         features = np.concatenate([normals, data.features.astype(np.float32)[sample_ids]], axis=1)
     else:
-        features = normalize_axis_tuple
+        features = normals
 
     data_dict = {
         "grid_size": grid_size,

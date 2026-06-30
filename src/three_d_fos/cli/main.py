@@ -59,7 +59,7 @@ def main() -> None:
 
     start_model = time.time()
     model_definition = MODEL_MAP[args.backbone]
-    model = three_d_fos.seghead.load(ckpt_path=args.model_path, backbone_model=model_definition)
+    model = three_d_fos.seghead.load(ckpt_path=args.model_path, model_definition=model_definition)
 
     model.to(device).eval()
     logger.info("Model loaded in %.2f seconds.", time.time() - start_model)

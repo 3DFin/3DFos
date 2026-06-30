@@ -26,9 +26,8 @@ from PySide6.QtWidgets import (
 )
 
 import three_d_fos
-from three_d_fos.backend.module import PointModule
 from three_d_fos.core import inference as backend_inference
-from three_d_fos.core.model import MODEL_MAP, Model
+from three_d_fos.core.model import MODEL_MAP, ModelDefinition
 from three_d_fos.io import (
     FilePointCloudDestination,
     FilePointCloudSource,
@@ -51,7 +50,7 @@ class InferenceWorker(QThread):
         destination: PointCloudDestination,
         device: torch.device,
         grid_size: float,
-        backbone: Model,
+        model_definition: ModelDefinition,
         tiling_factor: int,
     ):
         super().__init__()
@@ -59,13 +58,13 @@ class InferenceWorker(QThread):
         self.destination = destination
         self.device = device
         self.grid_size = grid_size
-        self.backbone = backbone
+        self.model_definition = model_definition
         self.tiling_factor = tiling_factor
 
     def run(self) -> None:
         """Run inference on the point cloud and save results."""
         try:
-            model = self._get_model(self.backbone)
+            model = self._get_model(self.model_definition)
 
             self.progress.emit("Loading point cloud data...")
             data = self.source.load()
@@ -90,11 +89,11 @@ class InferenceWorker(QThread):
         except Exception as e:
             self.error.emit(str(e))
 
-    def _get_model(self, model_definition: Model) -> torch.nn.Module:
+    def _get_model(self, model_definition: ModelDefinition) -> torch.nn.Module:
         """Load the segmentation model (in the device)."""
         self.progress.emit("Loading / Downloading model, please wait...")
         try:
-            model = three_d_fos.seghead.load(ckpt_path=None, backbone_model=model_definition)
+            model = three_d_fos.seghead.load(ckpt_path=None, model_definition=model_definition)
             # Move model to target device immediately
             model.to(self.device).eval()
         except Exception as e:
@@ -115,7 +114,7 @@ class MainWidget(QWidget):
         self.worker: InferenceWorker | None = None
         self.current_source: PointCloudSource | None = None
         self.current_destination: PointCloudDestination | None = None
-        self.current_backbone: Model | None
+        self.current_backbone: ModelDefinition | None
 
         self._setup_ui()
 
@@ -279,7 +278,7 @@ class MainWidget(QWidget):
             destination=self.current_destination,
             device=self.device,
             grid_size=float(self.grid_size_in.text()),
-            backbone=self.current_backbone,
+            model_definition=self.current_backbone,
             tiling_factor=int(self.tiling_factor_in.text()),
         )
 

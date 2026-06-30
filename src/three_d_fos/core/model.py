@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
-class Model:
+class ModelDefinition:
     name: str
     backbone: type[PointModule]
     url: str | None
@@ -56,10 +56,10 @@ def do_support_flash_attn():
 
     # Ampere = 8.x / TODO maybe we need to target 8.6
     if cc >= 8.0:
-        logger.info("GPU is Ampere or newer")
+        logger.info("GPU is Ampere or newer - Flash attention enabled")
         return True
     else:
-        logger.info("GPU older than Ampere")
+        logger.info("GPU older than Ampere - No Flash attention")
         return False
 
 
@@ -127,7 +127,7 @@ BASE_PTV3_CONFIG: dict = dict(
 )
 
 # Predefined models
-PTV3_FULL_MODEL = Model(
+PTV3_FULL_MODEL = ModelDefinition(
     name="PTv3_full",
     backbone=PointTransformerV3,
     url="https://github.com/3DFin/3DFos/releases/download/v0.1.0/ptv3_3dfos_005.pth",
@@ -136,7 +136,7 @@ PTV3_FULL_MODEL = Model(
     config=BASE_PTV3_CONFIG,
 )
 
-LITEPT_FULL_MODEL = Model(
+LITEPT_FULL_MODEL = ModelDefinition(
     name="LitePT_full",
     backbone=LitePT,
     url="https://github.com/3DFin/3DFos/releases/download/v0.1.0/litept_3dfos_005.pth",
@@ -145,8 +145,27 @@ LITEPT_FULL_MODEL = Model(
     config=BASE_LITEPT_CONFIG,
 )
 
+LITEPT_NORMALS_Z0_MODEL = ModelDefinition(
+    name="LitePT_normals_z0",
+    backbone=LitePT,
+    url="https://github.com/3DFin/3DFos/releases/download/v0.2.0/litept_3dfos_normals_z0_005.pth",
+    output_features=LITEPT_OUT_CHANNELS,
+    additional_features={Z0},
+    config=BASE_LITEPT_CONFIG,
+)
+
+LITEPT_NORMALS_MODEL = ModelDefinition(
+    name="LitePT_normals",
+    backbone=LitePT,
+    url="https://github.com/3DFin/3DFos/releases/download/v0.2.0/litept_3dfos_normals_005.pth",
+    output_features=LITEPT_OUT_CHANNELS,
+    config=BASE_LITEPT_CONFIG,
+)
+
 # Model Map
-MODEL_MAP: dict[str, Model] = {
+MODEL_MAP: dict[str, ModelDefinition] = {
     "ptv3_full": PTV3_FULL_MODEL,
     "litept_full": LITEPT_FULL_MODEL,
+    "litept_normals_z0": LITEPT_NORMALS_Z0_MODEL,
+    "litept_normals": LITEPT_NORMALS_MODEL,
 }

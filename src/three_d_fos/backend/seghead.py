@@ -7,7 +7,7 @@ from torch import nn
 
 from three_d_fos.backend.model.ptv3v1m1_model import PointTransformerV3
 from three_d_fos.backend.structure import Point
-from three_d_fos.core.model import PTV3_FULL_MODEL, Model
+from three_d_fos.core.model import PTV3_FULL_MODEL, ModelDefinition
 
 logger = logging.getLogger(__name__)
 
@@ -50,22 +50,22 @@ def try_load_model(ckpt_path: Path | None, url: str | None) -> dict[str, Any]:
 
 def load(
     ckpt_path: Path | None = None,
-    backbone_model: Model = PTV3_FULL_MODEL,
+    model_definition: ModelDefinition = PTV3_FULL_MODEL,
 ) -> nn.Module:
     model = SegmentationHeadV2(
         num_classes=NUM_CLASSES,
-        backbone_out_channels=backbone_model.output_features,
-        backbone=backbone_model.model_instance,
+        backbone_out_channels=model_definition.output_features,
+        backbone=model_definition.model_instance,
     )
 
-    ckpt = try_load_model(ckpt_path, backbone_model.url)
+    ckpt = try_load_model(ckpt_path, model_definition.url)
 
     torchsparse_statedict: dict[str, Any] = {}
 
     # State dict remapping for torchsparse++ / nanoTSparse
     # Both PTV3 and LitePT use sparse convolutions that need weight remapping
     # Weights have different names and shape, bias is ok.
-    logger.info("%s state dict remapping for Torchsparse++ / [nano]TS", backbone_model.name)
+    logger.info("%s state dict remapping for Torchsparse++ / [nano]TS", model_definition.name)
     for k, v in ckpt["state_dict"].items():
         if "cpe.0.weight" in k or "conv.weight" in k or "conv.0.weight" in k:
             v = v.permute(3, 2, 1, 4, 0)

@@ -35,6 +35,7 @@ class CloudComparePointCloudSource(PointCloudSource):
         # Load all requested features
         feature_list = []
         for feat in self.features:
+            print(feat)
             # Try to find the scalar field (case-insensitive)
             sf_index = None
             for i in range(self.point_cloud.getNumberOfScalarFields()):
