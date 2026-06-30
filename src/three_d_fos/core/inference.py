@@ -42,9 +42,9 @@ def preprocess(
 
     normals = normals.astype(np.float32)
     if data.features is not None:
-        features = np.concatenate([normals, data.features.astype(np.float32)[sample_ids]], axis=1)
+        features = np.concatenate([normals.astype(np.float32), data.features.astype(np.float32)[sample_ids]], axis=1)
     else:
-        features = normals
+        features = normals.astype(np.float32)
 
     data_dict = {
         "grid_size": grid_size,

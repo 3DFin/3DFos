@@ -80,7 +80,7 @@ class FilePointCloudSource(PointCloudSource):
             feat_data = vertices[feat_name]
             if not np.all(np.isfinite(feat_data)):
                 raise ValueError(f"Inf values detected in scalar fields ({feat_name})")
-            feature_list.append(feat_data)
+            feature_list.append(feat.normalize(feat_data))
 
         if feature_list:
             features = np.column_stack(feature_list)
