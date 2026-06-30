@@ -32,7 +32,7 @@ def preprocess(
     normals = pgeof.compute_features_selected(
         xyz_sampled,
         search_radius=0.5,
-        max_knn=500000,
+        max_knn=10000,
         selected_features=[
             pgeof.EFeatureID.Normal_x,
             pgeof.EFeatureID.Normal_y,
@@ -42,9 +42,9 @@ def preprocess(
 
     normals = normals.astype(np.float32)
     if data.features is not None:
-        features = np.concatenate([normals.astype(np.float32), data.features.astype(np.float32)[sample_ids]], axis=1)
+        features = np.concatenate([normals, data.features[sample_ids].astype(np.float32)], axis=1)
     else:
-        features = normals.astype(np.float32)
+        features = normals
 
     data_dict = {
         "grid_size": grid_size,

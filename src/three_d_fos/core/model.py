@@ -44,7 +44,7 @@ PTV3_OUT_CHANNELS = 64
 LITEPT_OUT_CHANNELS = 72
 
 
-def do_support_flash_attn():
+def do_support_flash_attn() -> bool:
     # Flash attn backend is not available on windows builds of PyTorch.
     if not torch.cuda.is_available() or sys.platform == "win32":
         return False

@@ -198,10 +198,11 @@ class PointROPEAttention(PointModule):
 
         # compute qkv
         qkv = qkv_rotated.view(-1, K, 3, H, C // H)
-        q = qkv[:, :, 0]
-        k = qkv[:, :, 1]
-        v = qkv[:, :, 2]
-        feat = scaled_dot_product_attention(q, k, v, scale=self.scale, dropout_p=0.0).reshape(-1, C)
+        q = qkv[:, :, 0].transpose(1, 2)
+        k = qkv[:, :, 1].transpose(1, 2)
+        v = qkv[:, :, 2].transpose(1, 2)
+        feat = scaled_dot_product_attention(q, k, v, scale=self.scale, dropout_p=0.0)
+        feat = feat.transpose(1, 2).reshape(-1, C)
 
         if point.feat.is_cuda:
             feat = feat[inverse].float()

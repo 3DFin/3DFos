@@ -31,13 +31,13 @@ Please cite [PointCept](https://github.com/pointcept/pointcept), [PTV3](https://
 - Replaced `spconv` by `Torchsparse++` / `nanoTSparse` for sparse convolution. `nanoTSparse` is not affected by `CUMM` bugs (like https://github.com/FindDefinition/cumm/issues/26) and is easier
   to package / maintain. We provide a precompiled version of `nanoTSparse` for CPU. For `CUDA` you need a `C/C++` and `CUDA` compiler/SDK.
 - Use `torch` built-in `SDPA` \ `varlen` to levrage efficient and memory friendly attention kernels and remove the need of `flash-attn` dependency. torch `varlen` is only compatible with NVIDIA GPU that have a compute capability of 8.6+ (Ampere arch).
-- Added a dedicated inference demo/script for 3DFos/SegmentedForest datasets.
+- Added a dedicated inference CLI, GUI and CloudCompare Python Plugin.
 
 ## Installation
 
 ### Pure CPU inference
 
-Simply whith `pip`, in a dedicated `venv`
+Simply with `pip`, in a dedicated `venv`
 
 ```
 python -m pip install "3dfos[cpu,gui] @ git+https://github.com/3DFin/3DFos.git"
@@ -85,10 +85,8 @@ uv sync --extra cu130 --extra nanotsparsecuda
 ### CLI
 
 ```
-uv run 3DFos <path_to_the_cloud.las|ply> [--output_path seg_result.las] [--model_path model.ckpt] [--grid_size 0.05] [--backbone ptv3_full | litept_full] [--device cuda | cpu]
+uv run 3DFos <path_to_the_cloud.las|ply> [--output_path seg_result.las] [--model_path model.ckpt] [--grid_size 0.05] [--model ptv3_full | litept_full] [--device cuda | cpu]
 ```
-
-### GUI
 
 ### Standalone with GUI
 
@@ -102,11 +100,22 @@ An [example point cloud](https://drive.google.com/file/d/1Dexdy0uVf58Nh7TfX1srp9
 
 `model_path` flag is optional and latest weights are automatically downloaded from the [release page](https://github.com/3DFin/3DFos/releases) on Github.
 
-Point clouds can be either in las/laz or ply format.
+Point clouds can be either in `las`/`laz` or `ply` format.
 
-For now, only the weights for PTV3 and LitePT trained at a 0.05 m voxel size with full `3DFin` features (i.e., distance to axis and elevation) are publicly available. This means you **must** first run 3DFin on your point cloud and then provide its output to 3DFos. Normal features are computed on the fly.
+## Available Models
 
-You can adapt the voxel size. For example, you could run inference at a 0.01 m voxel size for a model trained at 0.05 m to lower runtime and resource consumption, at the cost of slightly reduced accuracy of the results.
+| Model Name            | Backbone           | Additional Features | Weights URL                                                                                             |
+| --------------------- | ------------------ | ------------------- | ------------------------------------------------------------------------------------------------------- |
+| **PTv3_full**         | PointTransformerV3 | Z0, DIST_AXES       | [Since v0.1.0](https://github.com/3DFin/3DFos/releases/download/v0.1.0/ptv3_3dfos_005.pth)              |
+| **LitePT_full**       | LitePT-S           | Z0, DIST_AXES       | [Since v0.1.0](https://github.com/3DFin/3DFos/releases/download/v0.1.0/litept_3dfos_005.pth)            |
+| **LitePT_normals_z0** | LitePT-S           | Z0                  | [Since v0.2.0](https://github.com/3DFin/3DFos/releases/download/v0.2.0/litept_3dfos_normals_z0_005.pth) |
+| **LitePT_normals**    | LitePT-S           | None                | [Since v0.2.0](https://github.com/3DFin/3DFos/releases/download/v0.2.0/litept_3dfos_normals_005.pth)    |
+
+Weights for PTV3 and LitePT trained at a 0.05 m voxel size with and without full `3DFin` features (i.e., distance to axis and elevation) are publicly available. This means that for models with full `3DFin` features, you **must** first run `3DFin` on your point cloud and then provide its output to `3DFos`. For `Z0` only models, you can compute height normalization with `3DFin` or any other software (e.g., vanilla `CSF`). Normal features are always computed on the fly by `3DFos` using `pgeof`.
+
+3DFos looks for additional features by name in `las` files, `ply` files, and CloudCompare scalar fields. Scalar fields in `ply` files must be prefixed by `Scalar_` to match CloudCompare's output format.
+
+You can adapt the voxel size. For example, you could run inference at a 0.1 m voxel size for a model trained at 0.05 m to lower runtime and resource consumption, at the cost of slightly reduced accuracy of the results.
 
 ## Funding
 
@@ -122,6 +131,6 @@ and by the Spanish Knowledge Generation project (PID2021-126790NB-I00):
 
 ## TODOs:
 
-- Provide a pixi file in order to simplify installation / compilation for CUDA?
+- Provide a pixi file in order to simplify installation / compilation for CUDA +
 - Use point closest to the voxel center for better accuracy.
-- Add a spatial tiling mechanism? (First pass of a Lite NN `binary seg` + PCA for overlapping tiles + inference + Logit average between tiles)
+- Add a `better` spatial tiling mechanism: (First pass of a Lite NN `binary seg` + PCA and morphological operation to extract overlapping tiles + multiple inference + Logit average between tiles)

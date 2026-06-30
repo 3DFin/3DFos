@@ -30,11 +30,11 @@ def main() -> None:
         "--tiling_factor", type=int, default=0, help="Number of tiles. Total number of tiles is 2^tiling_factor"
     )
     parser.add_argument(
-        "--backbone",
+        "--model",
         type=str,
         choices=list(MODEL_MAP.keys()),
         default="ptv3_full",
-        help=f"Choose backbone: {','.join(MODEL_MAP.keys())} ",
+        help=f"Choose model: {','.join(MODEL_MAP.keys())} ",
     )
 
     parser.add_argument(
@@ -58,7 +58,7 @@ def main() -> None:
     start_total = time.time()
 
     start_model = time.time()
-    model_definition = MODEL_MAP[args.backbone]
+    model_definition = MODEL_MAP[args.model]
     model = three_d_fos.seghead.load(ckpt_path=args.model_path, model_definition=model_definition)
 
     model.to(device).eval()
