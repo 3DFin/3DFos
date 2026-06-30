@@ -6,7 +6,7 @@ from pathlib import Path
 
 import torch
 from PySide6.QtCore import QLocale, Qt, QThread, Signal
-from PySide6.QtGui import QDoubleValidator, QPixmap
+from PySide6.QtGui import QDoubleValidator, QIntValidator, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
 )
 
 import three_d_fos
+from three_d_fos.backend.module import PointModule
 from three_d_fos.core import inference as backend_inference
 from three_d_fos.core.model import MODEL_MAP, Model
 from three_d_fos.io import (
@@ -64,8 +65,7 @@ class InferenceWorker(QThread):
     def run(self) -> None:
         """Run inference on the point cloud and save results."""
         try:
-            self.progress.emit("Loading / Downloading model, please wait...")
-            self._load_model(self.backbone)
+            model = self._get_model(self.backbone)
 
             self.progress.emit("Loading point cloud data...")
             data = self.source.load()
@@ -76,7 +76,7 @@ class InferenceWorker(QThread):
 
             self.progress.emit("Running inference...")
             with torch.no_grad():
-                labels = backend_inference.run_inference(self.model, point_features, self.device, self.tiling_factor)[
+                labels = backend_inference.run_inference(model, point_features, self.device, self.tiling_factor)[
                     remap_ids
                 ]
 
@@ -90,16 +90,17 @@ class InferenceWorker(QThread):
         except Exception as e:
             self.error.emit(str(e))
 
-    def _load_model(self, model_definition: Model) -> None:
+    def _get_model(self, model_definition: Model) -> torch.nn.Module:
         """Load the segmentation model (in the device)."""
-
+        self.progress.emit("Loading / Downloading model, please wait...")
         try:
-            self.model = three_d_fos.seghead.load(ckpt_path=None, backbone_model=model_definition)
+            model = three_d_fos.seghead.load(ckpt_path=None, backbone_model=model_definition)
             # Move model to target device immediately
-            self.model.to(self.device).eval()
+            model.to(self.device).eval()
         except Exception as e:
-            self.progress.emit(f"Failed to load model: {e}")
+            self.error.emit(f"Failed to load model: {e}")
         self.progress.emit("Model loaded successfully")
+        return model
 
 
 class MainWidget(QWidget):
@@ -158,8 +159,6 @@ class MainWidget(QWidget):
         self.backbone_in.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         self.backbone_in.addItems(list(MODEL_MAP.keys()))
         self.backbone_in.currentTextChanged.connect(self._on_backbone_changed)
-        # Default to first entry
-        self.current_backbone = MODEL_MAP[self.backbone_in.currentText()]
         parameters_layout.addWidget(self.backbone_lbl, 1, 0)
         parameters_layout.addWidget(self.backbone_in, 1, 1)
 
@@ -178,8 +177,7 @@ class MainWidget(QWidget):
         self.tiling_factor_lbl = QLabel("Tiling factor")
         self.tiling_factor_in = QLineEdit("0")
         self.tiling_factor_in.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
-        tiling_validator = QDoubleValidator(0, 10, 0)
-        tiling_validator.setLocale(QLocale.c())
+        tiling_validator = QIntValidator(0, 10)
         self.tiling_factor_in.setValidator(tiling_validator)
         parameters_layout.addWidget(self.tiling_factor_lbl, 3, 0)
         parameters_layout.addWidget(self.tiling_factor_in, 3, 1)
