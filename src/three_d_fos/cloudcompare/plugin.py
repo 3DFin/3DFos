@@ -65,12 +65,12 @@ class CloudComparePointCloudSource(PointCloudSource):
 class CloudComparePointDestination(PointCloudDestination):
     """Save segmentation results back into CC as a new point cloud."""
 
-    def __init__(self, cc: pycc.ccPythonInstance, name: str):
+    def __init__(self, cc: pycc.ccPythonInstance, source_cloud: pycc.ccPointCloud):
+        self.source_cloud = source_cloud
         self.cc = cc
-        self._name = name
 
     def get_name(self) -> str:
-        return self._name
+        return self.source_cloud.getName() + " - 3DFos"
 
     def save(self, result: SegmentationResult) -> None:
         """Create a new point cloud with classification labels and add it to CC."""
@@ -80,9 +80,8 @@ class CloudComparePointDestination(PointCloudDestination):
             result.original_coord[:, 0], result.original_coord[:, 1], result.original_coord[:, 2]
         )
 
-        # TODO (RJ):
-        # output_cloud.copyGlobalShiftAndScale(base_cloud)
-        output_cloud.setName(self._name)
+        output_cloud.copyGlobalShiftAndScale(self.source_cloud)
+        output_cloud.setName(self.get_name())
 
         # Add labels as a scalar field
         idx_sf = output_cloud.addScalarField("classification")
@@ -93,6 +92,8 @@ class CloudComparePointDestination(PointCloudDestination):
         # Set display: show the classification SF with default color scale
         output_cloud.setCurrentDisplayedScalarField(0)
         output_cloud.toggleSF()
+
+        self.source_cloud.getParent().addChild(output_cloud)
 
         self.cc.addToDB(output_cloud)
 
@@ -132,7 +133,7 @@ def _create_app_and_run(cc: pycc.ccPythonInstance, point_cloud: pycc.ccPointClou
     fos_widget = MainWidget()
 
     source = CloudComparePointCloudSource(cc, point_cloud)
-    destination = CloudComparePointDestination(cc, point_cloud.getName())
+    destination = CloudComparePointDestination(cc, point_cloud)
 
     # Override the source selection, use CC cloud as source.
     fos_widget.current_source = source
