@@ -58,7 +58,6 @@ class CloudComparePointCloudSource(PointCloudSource):
         features_array = None
         if feature_list:
             features_array = np.column_stack(feature_list)
-
         return PointCloudData(xyz=xyz, features=features_array, source_name=self._name)
 
 
@@ -93,8 +92,8 @@ class CloudComparePointDestination(PointCloudDestination):
         output_cloud.setCurrentDisplayedScalarField(0)
         output_cloud.toggleSF()
 
+        self.source_cloud.setEnabled(False)
         self.source_cloud.getParent().addChild(output_cloud)
-
         self.cc.addToDB(output_cloud)
 
 
