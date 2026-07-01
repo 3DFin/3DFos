@@ -67,8 +67,8 @@ def main() -> None:
     start_data = time.time()
     logger.info("Loading data from %s...", args.input_path)
 
-    source = FilePointCloudSource(args.input_path, model_definition.features)
-    data = source.load()
+    source = FilePointCloudSource(args.input_path)
+    data = source.load(model_definition.features)
     original_coord = data.xyz.copy()
 
     logger.info("Data loaded in %.2f seconds.", time.time() - start_data)

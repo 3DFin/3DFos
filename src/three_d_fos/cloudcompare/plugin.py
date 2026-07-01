@@ -15,18 +15,17 @@ from three_d_fos.io import PointCloudData, PointCloudDestination, PointCloudSour
 class CloudComparePointCloudSource(PointCloudSource):
     """Point cloud source from CC selection."""
 
-    def __init__(self, cc: pycc.ccPythonInstance, point_cloud: pycc.ccPointCloud, features: frozenset[Feature]):
-        """Initialize with CC instance, selected point cloud (and requested features.)"""
+    def __init__(self, cc: pycc.ccPythonInstance, point_cloud: pycc.ccPointCloud):
+        """Initialize with CC instance, selected point cloud."""
         self.cc = cc
         self.point_cloud = point_cloud
         self._name = point_cloud.getName()
-        self.features = features
 
     def get_name(self) -> str:
         """Return the point cloud name."""
         return self._name
 
-    def load(self) -> PointCloudData:
+    def load(self, features: frozenset[Feature]) -> PointCloudData:
         """Load point cloud data from CloudCompare."""
 
         # Get coordinates
@@ -34,8 +33,7 @@ class CloudComparePointCloudSource(PointCloudSource):
 
         # Load all requested features
         feature_list = []
-        for feat in self.features:
-            print(feat)
+        for feat in features:
             # Try to find the scalar field (case-insensitive)
             sf_index = None
             for i in range(self.point_cloud.getNumberOfScalarFields()):
@@ -81,6 +79,7 @@ class CloudComparePointDestination(PointCloudDestination):
             result.original_coord[:, 0], result.original_coord[:, 1], result.original_coord[:, 2]
         )
 
+        # TODO (RJ):
         # output_cloud.copyGlobalShiftAndScale(base_cloud)
         output_cloud.setName(self._name)
 
@@ -131,15 +130,13 @@ def _create_app_and_run(cc: pycc.ccPythonInstance, point_cloud: pycc.ccPointClou
     # Create the main widget first to access its current_backbone
     fos_widget = MainWidget()
 
-    # Use the widget's current backbone features (defaults to PTV3_FULL_MODEL)
-    backbone_features = fos_widget.current_backbone.features
-
-    source = CloudComparePointCloudSource(cc, point_cloud, backbone_features)
+    source = CloudComparePointCloudSource(cc, point_cloud)
     destination = CloudComparePointDestination(cc, point_cloud.getName())
 
     # Override the source selection, use CC cloud as source.
     fos_widget.current_source = source
     fos_widget.current_destination = destination
+    fos_widget.source_lbl.setText("Input Cloud")
     fos_widget.source_in.setText(source.get_name())
     fos_widget.source_in.setEnabled(False)
     fos_widget.run_btn.setEnabled(True)

@@ -30,7 +30,7 @@ class PointCloudSource(ABC):
     """Abstract base class for point cloud data sources."""
 
     @abstractmethod
-    def load(self) -> PointCloudData:
+    def load(self, features: frozenset[Feature]) -> PointCloudData:
         """Load and return point cloud data."""
         raise NotImplementedError
 
@@ -43,25 +43,24 @@ class PointCloudSource(ABC):
 class FilePointCloudSource(PointCloudSource):
     """Point cloud source from file (PLY/LAS/LAZ)."""
 
-    def __init__(self, filepath: Path, features: frozenset[Feature]):
+    def __init__(self, filepath: Path):
         self.filepath = filepath
-        self.features = features
 
     def get_name(self) -> str:
         return self.filepath.name
 
-    def load(self) -> PointCloudData:
+    def load(self, features: frozenset[Feature]) -> PointCloudData:
         """Load point cloud from file."""
         suffix = self.filepath.suffix.lower()
 
         if suffix == ".ply":
-            return self._load_ply()
+            return self._load_ply(features)
         elif suffix in (".las", ".laz"):
-            return self._load_las()
+            return self._load_las(features)
         else:
             raise ValueError(f"Unsupported file extension '{suffix}'. Supported: .ply, .las, .laz")
 
-    def _load_ply(self) -> PointCloudData:
+    def _load_ply(self, features: frozenset[Feature]) -> PointCloudData:
         """Load PLY file."""
 
         with open(self.filepath, "rb") as f:
@@ -70,10 +69,10 @@ class FilePointCloudSource(PointCloudSource):
         vertices = cloud["vertex"]
         xyz = np.vstack((vertices["x"], vertices["y"], vertices["z"])).T
 
-        features: np.ndarray | None = None
+        features_array: np.ndarray | None = None
         feature_list = []
 
-        for feat in self.features:
+        for feat in features:
             feat_name = "scalar_" + feat.name
             if feat_name not in vertices:
                 raise ValueError(f"PLY file missing required scalar fields: {feat_name}")
@@ -83,20 +82,20 @@ class FilePointCloudSource(PointCloudSource):
             feature_list.append(feat.normalize(feat_data))
 
         if feature_list:
-            features = np.column_stack(feature_list)
+            features_array = np.column_stack(feature_list)
 
-        return PointCloudData(xyz=xyz, features=features, source_name=self.get_name())
+        return PointCloudData(xyz=xyz, features=features_array, source_name=self.get_name())
 
-    def _load_las(self) -> PointCloudData:
+    def _load_las(self, features: frozenset[Feature]) -> PointCloudData:
         """Load LAS/LAZ file."""
 
         las = laspy.read(self.filepath)
         xyz = np.vstack((las.x, las.y, las.z)).T
 
-        features: np.ndarray | None = None
+        features_array: np.ndarray | None = None
         feature_list = []
 
-        for feat in self.features:
+        for feat in features:
             if not hasattr(las, feat.name):
                 raise ValueError(f"LAS file missing required scalar fields: {feat.name}")
             feat_data = getattr(las, feat.name)
@@ -105,9 +104,9 @@ class FilePointCloudSource(PointCloudSource):
             feature_list.append(feat.normalize(feat_data))
 
         if feature_list:
-            features = np.column_stack(feature_list)
+            features_array = np.column_stack(feature_list)
 
-        return PointCloudData(xyz, features, self.get_name())
+        return PointCloudData(xyz, features_array, self.get_name())
 
 
 class PointCloudDestination(ABC):

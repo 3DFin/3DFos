@@ -67,7 +67,7 @@ class InferenceWorker(QThread):
             model = self._get_model(self.model_definition)
 
             self.progress.emit("Loading point cloud data...")
-            data = self.source.load()
+            data = self.source.load(self.model_definition.features)
             original_coord = data.xyz.copy()
 
             self.progress.emit("Preprocessing...")
@@ -114,7 +114,7 @@ class MainWidget(QWidget):
         self.worker: InferenceWorker | None = None
         self.current_source: PointCloudSource | None = None
         self.current_destination: PointCloudDestination | None = None
-        self.current_backbone: ModelDefinition | None
+        self.current_model_deifinition: ModelDefinition = MODEL_MAP[list(MODEL_MAP.keys())[0]]
 
         self._setup_ui()
 
@@ -152,14 +152,14 @@ class MainWidget(QWidget):
         parameters_layout.addWidget(self.device_lbl, 0, 0)
         parameters_layout.addWidget(self.device_in, 0, 1)
 
-        # Backbone
-        self.backbone_lbl = QLabel("Backbone")
-        self.backbone_in = QComboBox()
-        self.backbone_in.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        self.backbone_in.addItems(list(MODEL_MAP.keys()))
-        self.backbone_in.currentTextChanged.connect(self._on_backbone_changed)
-        parameters_layout.addWidget(self.backbone_lbl, 1, 0)
-        parameters_layout.addWidget(self.backbone_in, 1, 1)
+        # Model definition
+        self.model_lbl = QLabel("Model")
+        self.model_in = QComboBox()
+        self.model_in.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        self.model_in.addItems(list(MODEL_MAP.keys()))
+        self.model_in.currentTextChanged.connect(self._on_model_changed)
+        parameters_layout.addWidget(self.model_lbl, 1, 0)
+        parameters_layout.addWidget(self.model_in, 1, 1)
 
         # Voxel size
         self.grid_size_lbl = QLabel("Voxel size")
@@ -224,9 +224,9 @@ class MainWidget(QWidget):
         """Handle device selection."""
         self.device = torch.device(device_str)
 
-    def _on_backbone_changed(self, backbone_str: str) -> None:
-        """Handle backbone selection"""
-        self.current_backbone = MODEL_MAP[backbone_str.lower()]
+    def _on_model_changed(self, model_name_str: str) -> None:
+        """Handle model selection"""
+        self.current_model_deifinition = MODEL_MAP[model_name_str.lower()]
 
     def _on_select_file(self) -> None:
         """Handle file selection."""
@@ -238,7 +238,7 @@ class MainWidget(QWidget):
         )
 
         if filepath:
-            self.current_source = FilePointCloudSource(Path(filepath), self.current_backbone.features)
+            self.current_source = FilePointCloudSource(Path(filepath))
             self.source_in.setText(self.current_source.get_name())
             self.run_btn.setEnabled(True)
             self.status_lbl.setText("Source loaded, ready for inference")
@@ -278,7 +278,7 @@ class MainWidget(QWidget):
             destination=self.current_destination,
             device=self.device,
             grid_size=float(self.grid_size_in.text()),
-            model_definition=self.current_backbone,
+            model_definition=self.current_model_deifinition,
             tiling_factor=int(self.tiling_factor_in.text()),
         )
 
