@@ -5,7 +5,6 @@ from typing import Any
 import torch
 from torch import nn
 
-from three_d_fos.backend.model.ptv3v1m1_model import PointTransformerV3
 from three_d_fos.backend.structure import Point
 from three_d_fos.core.model import PTV3_FULL_MODEL, ModelDefinition
 
