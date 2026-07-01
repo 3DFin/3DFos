@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
 )
 
 import three_d_fos
+from three_d_fos import __version__
 from three_d_fos.core import inference as backend_inference
 from three_d_fos.core.model import MODEL_MAP, ModelDefinition
 from three_d_fos.io import (
@@ -107,7 +108,7 @@ class MainWidget(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("3DFos - Point Cloud Segmentation")
+        self.setWindowTitle(f"3DFos - Point Cloud Segmentation (v{__version__})")
         self.setGeometry(100, 100, 800, 600)
 
         self.device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -322,7 +323,7 @@ class ThreeDFosApp:
         self._set_window_icon()
         fos_widget = MainWidget()
         self.window = QMainWindow()
-        self.window.setWindowTitle("3DFos")
+        self.window.setWindowTitle(f"3DFos (v{__version__})")
         self.window.setCentralWidget(fos_widget)
         self.window.setFixedWidth(640)
 

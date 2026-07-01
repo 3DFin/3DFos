@@ -7,6 +7,7 @@ import numpy as np
 import pycc
 from PySide6.QtWidgets import QDialog, QVBoxLayout
 
+from three_d_fos import __version__
 from three_d_fos.core.feature import Feature
 from three_d_fos.gui.app import MainWidget
 from three_d_fos.io import PointCloudData, PointCloudDestination, PointCloudSource, SegmentationResult
@@ -153,7 +154,7 @@ def _create_app_and_run(cc: pycc.ccPythonInstance, point_cloud: pycc.ccPointClou
 
     # QDialog container
     fos_dialog = QDialog()
-    fos_dialog.setWindowTitle("3DFos")
+    fos_dialog.setWindowTitle(f"3DFos (v{__version__})")
     fos_dialog.setModal(True)
     fos_dialog.setFixedWidth(640)
 
