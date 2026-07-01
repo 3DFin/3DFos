@@ -148,7 +148,7 @@ LITEPT_FULL_MODEL = ModelDefinition(
 LITEPT_NORMALS_Z0_MODEL = ModelDefinition(
     name="LitePT_normals_z0",
     backbone=LitePT,
-    url="https://github.com/3DFin/3DFos/releases/download/v0.2.0/litept_3dfos_normals_z0_005.pth",
+    url="https://github.com/3DFin/3DFos/releases/download/v0.2.0a1/litept_3dfos_normals_z0_005.pth",
     output_features=LITEPT_OUT_CHANNELS,
     additional_features={Z0},
     config=BASE_LITEPT_CONFIG,
@@ -157,7 +157,7 @@ LITEPT_NORMALS_Z0_MODEL = ModelDefinition(
 LITEPT_NORMALS_MODEL = ModelDefinition(
     name="LitePT_normals",
     backbone=LitePT,
-    url="https://github.com/3DFin/3DFos/releases/download/v0.2.0/litept_3dfos_normals_005.pth",
+    url="https://github.com/3DFin/3DFos/releases/download/v0.2.0a1/litept_3dfos_normals_005.pth",
     output_features=LITEPT_OUT_CHANNELS,
     config=BASE_LITEPT_CONFIG,
 )

@@ -104,12 +104,12 @@ Point clouds can be either in `las`/`laz` or `ply` format.
 
 ## Available Models
 
-| Model Name            | Backbone           | Additional Features | Weights URL                                                                                             |
-| --------------------- | ------------------ | ------------------- | ------------------------------------------------------------------------------------------------------- |
-| **PTv3_full**         | PointTransformerV3 | Z0, DIST_AXES       | [Since v0.1.0](https://github.com/3DFin/3DFos/releases/download/v0.1.0/ptv3_3dfos_005.pth)              |
-| **LitePT_full**       | LitePT-S           | Z0, DIST_AXES       | [Since v0.1.0](https://github.com/3DFin/3DFos/releases/download/v0.1.0/litept_3dfos_005.pth)            |
-| **LitePT_normals_z0** | LitePT-S           | Z0                  | [Since v0.2.0](https://github.com/3DFin/3DFos/releases/download/v0.2.0/litept_3dfos_normals_z0_005.pth) |
-| **LitePT_normals**    | LitePT-S           | None                | [Since v0.2.0](https://github.com/3DFin/3DFos/releases/download/v0.2.0/litept_3dfos_normals_005.pth)    |
+| Model Name            | Backbone           | Additional Features | Weights URL                                                                                         |
+| --------------------- | ------------------ | ------------------- | --------------------------------------------------------------------------------------------------- |
+| **PTv3_full**         | PointTransformerV3 | Z0, DIST_AXES       | [v0.1.0](https://github.com/3DFin/3DFos/releases/download/v0.1.0/ptv3_3dfos_005.pth)                |
+| **LitePT_full**       | LitePT-S           | Z0, DIST_AXES       | [v0.1.0](https://github.com/3DFin/3DFos/releases/download/v0.1.0/litept_3dfos_005.pth)              |
+| **LitePT_normals_z0** | LitePT-S           | Z0                  | [v0.2.0](https://github.com/3DFin/3DFos/releases/download/v0.2.0a1/litept_3dfos_normals_z0_005.pth) |
+| **LitePT_normals**    | LitePT-S           | None                | [v0.2.0](https://github.com/3DFin/3DFos/releases/download/v0.2.0a1/litept_3dfos_normals_005.pth)    |
 
 Weights for PTV3 and LitePT trained at a 0.05 m voxel size with and without full `3DFin` features (i.e., distance to axis and elevation) are publicly available. This means that for models with full `3DFin` features, you **must** first run `3DFin` on your point cloud and then provide its output to `3DFos`. For `Z0` only models, you can compute height normalization with `3DFin` or any other software (e.g., vanilla `CSF`). Normal features are always computed on the fly by `3DFos` using `pgeof`.
 

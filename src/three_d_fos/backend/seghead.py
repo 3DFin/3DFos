@@ -5,6 +5,7 @@ from typing import Any
 import torch
 from torch import nn
 
+from three_d_fos.backend.model.ptv3v1m1_model import PointTransformerV3
 from three_d_fos.backend.structure import Point
 from three_d_fos.core.model import PTV3_FULL_MODEL, ModelDefinition
 
@@ -43,7 +44,7 @@ def try_load_model(ckpt_path: Path | None, url: str | None) -> dict[str, Any]:
         logger.info("Using torch.hub model at %s", url)
         ckpt = torch.hub.load_state_dict_from_url(url, map_location="cpu")
     else:
-        raise RuntimeError("Unable to load model ()")
+        raise RuntimeError("Unable to load model")
     return ckpt
 
 
