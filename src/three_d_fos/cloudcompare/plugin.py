@@ -7,6 +7,8 @@ import numpy as np
 import pycc
 from PySide6.QtWidgets import QDialog, QVBoxLayout
 
+from three_d_fos import __version__
+from three_d_fos.core.feature import Feature
 from three_d_fos.gui.app import MainWidget
 from three_d_fos.io import PointCloudData, PointCloudDestination, PointCloudSource, SegmentationResult
 
@@ -15,7 +17,7 @@ class CloudComparePointCloudSource(PointCloudSource):
     """Point cloud source from CC selection."""
 
     def __init__(self, cc: pycc.ccPythonInstance, point_cloud: pycc.ccPointCloud):
-        """Initialize with CC instance and selected point cloud."""
+        """Initialize with CC instance, selected point cloud."""
         self.cc = cc
         self.point_cloud = point_cloud
         self._name = point_cloud.getName()
@@ -24,34 +26,50 @@ class CloudComparePointCloudSource(PointCloudSource):
         """Return the point cloud name."""
         return self._name
 
-    def load(self) -> PointCloudData:
+    def load(self, features: frozenset[Feature]) -> PointCloudData:
         """Load point cloud data from CloudCompare."""
 
         # Get coordinates
         xyz = self.point_cloud.points().astype(np.double)
 
-        # Get the SF
-        z0 = self.point_cloud.getScalarField(self.point_cloud.getScalarFieldIndexByName("Z0")).toArray()
-        dist_axes = self.point_cloud.getScalarField(self.point_cloud.getScalarFieldIndexByName("dist_axes")).toArray()
+        # Load all requested features
+        feature_list = []
+        for feat in features:
+            # Try to find the scalar field (case-insensitive)
+            sf_index = None
+            for i in range(self.point_cloud.getNumberOfScalarFields()):
+                sf_name = self.point_cloud.getScalarFieldName(i)
+                if feat.name.lower() in sf_name.lower():
+                    sf_index = i
+                    break
 
-        if z0 is None or dist_axes is None:
-            raise ValueError(
-                "Point cloud missing required scalar fields: 'Z0' and 'dist_axes'. "
-                "Please ensure the point cloud has been processed with 3DFin."
-            )
+            if sf_index is None:
+                raise ValueError(f"Point cloud missing required scalar field: '{feat.name}'.")
 
-        return PointCloudData(xyz=xyz, z0=z0, dist_axes=dist_axes, source_name=self._name)
+            feat_data = self.point_cloud.getScalarField(sf_index).toArray()
+            if not np.all(np.isfinite(feat_data)):
+                raise ValueError(f"Inf values detected in scalar field ({feat.name})")
+
+            # Normalize the feature data
+            normalized_data = feat.normalize(feat_data)
+            feature_list.append(normalized_data)
+
+        # Combine all features into a single array
+        features_array = None
+        if feature_list:
+            features_array = np.column_stack(feature_list)
+        return PointCloudData(xyz=xyz, features=features_array, source_name=self._name)
 
 
 class CloudComparePointDestination(PointCloudDestination):
     """Save segmentation results back into CC as a new point cloud."""
 
-    def __init__(self, cc: pycc.ccPythonInstance, name: str):
+    def __init__(self, cc: pycc.ccPythonInstance, source_cloud: pycc.ccPointCloud):
+        self.source_cloud = source_cloud
         self.cc = cc
-        self._name = name
 
     def get_name(self) -> str:
-        return self._name
+        return self.source_cloud.getName() + " - 3DFos"
 
     def save(self, result: SegmentationResult) -> None:
         """Create a new point cloud with classification labels and add it to CC."""
@@ -61,8 +79,8 @@ class CloudComparePointDestination(PointCloudDestination):
             result.original_coord[:, 0], result.original_coord[:, 1], result.original_coord[:, 2]
         )
 
-        # output_cloud.copyGlobalShiftAndScale(base_cloud)
-        output_cloud.setName(self._name)
+        output_cloud.copyGlobalShiftAndScale(self.source_cloud)
+        output_cloud.setName(self.get_name())
 
         # Add labels as a scalar field
         idx_sf = output_cloud.addScalarField("classification")
@@ -74,6 +92,8 @@ class CloudComparePointDestination(PointCloudDestination):
         output_cloud.setCurrentDisplayedScalarField(0)
         output_cloud.toggleSF()
 
+        self.source_cloud.setEnabled(False)
+        self.source_cloud.getParent().addChild(output_cloud)
         self.cc.addToDB(output_cloud)
 
 
@@ -108,15 +128,16 @@ def _create_app_and_run(cc: pycc.ccPythonInstance, point_cloud: pycc.ccPointClou
     point_cloud : pycc.ccPointCloud
         The selected point cloud from CloudCompare.
     """
-    source = CloudComparePointCloudSource(cc, point_cloud)
-    destination = CloudComparePointDestination(cc, point_cloud.getName())
-
-    # Create the main windget
+    # Create the main widget first to access its current_backbone
     fos_widget = MainWidget()
+
+    source = CloudComparePointCloudSource(cc, point_cloud)
+    destination = CloudComparePointDestination(cc, point_cloud)
 
     # Override the source selection, use CC cloud as source.
     fos_widget.current_source = source
     fos_widget.current_destination = destination
+    fos_widget.source_lbl.setText("Input Cloud")
     fos_widget.source_in.setText(source.get_name())
     fos_widget.source_in.setEnabled(False)
     fos_widget.run_btn.setEnabled(True)
@@ -133,7 +154,7 @@ def _create_app_and_run(cc: pycc.ccPythonInstance, point_cloud: pycc.ccPointClou
 
     # QDialog container
     fos_dialog = QDialog()
-    fos_dialog.setWindowTitle("3DFos")
+    fos_dialog.setWindowTitle(f"3DFos (v{__version__})")
     fos_dialog.setModal(True)
     fos_dialog.setFixedWidth(640)
 
@@ -157,20 +178,6 @@ def main() -> None:
 
     if not isinstance(point_cloud, pycc.ccPointCloud):
         raise RuntimeError("Selected entity should be a point cloud")
-
-    # Check for required scalar fields
-    scalar_fields = {}
-    for i in range(point_cloud.getNumberOfScalarFields()):
-        scalar_fields[i] = point_cloud.getScalarFieldName(i)
-
-    has_z0 = any("z0" in name.lower() for name in scalar_fields.values())
-    has_dist_axes = any("dist_axes" in name.lower() for name in scalar_fields.values())
-
-    if not has_z0 or not has_dist_axes:
-        raise RuntimeError(
-            "Point cloud is missing required scalar fields. "
-            "Please ensure it has been processed with 3DFin to include 'Z0' and 'dist_axes'."
-        )
 
     cc.freezeUI(True)
     try:

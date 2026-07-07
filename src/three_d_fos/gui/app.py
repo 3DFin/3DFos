@@ -6,7 +6,7 @@ from pathlib import Path
 
 import torch
 from PySide6.QtCore import QLocale, Qt, QThread, Signal
-from PySide6.QtGui import QDoubleValidator, QPixmap
+from PySide6.QtGui import QDoubleValidator, QIntValidator, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -26,7 +26,9 @@ from PySide6.QtWidgets import (
 )
 
 import three_d_fos
-from three_d_fos.backend import inference as backend_inference
+from three_d_fos import __version__
+from three_d_fos.core import inference as backend_inference
+from three_d_fos.core.model import MODEL_MAP, ModelDefinition
 from three_d_fos.io import (
     FilePointCloudDestination,
     FilePointCloudSource,
@@ -49,7 +51,7 @@ class InferenceWorker(QThread):
         destination: PointCloudDestination,
         device: torch.device,
         grid_size: float,
-        backbone: str,
+        model_definition: ModelDefinition,
         tiling_factor: int,
     ):
         super().__init__()
@@ -57,28 +59,24 @@ class InferenceWorker(QThread):
         self.destination = destination
         self.device = device
         self.grid_size = grid_size
-        self.backbone = backbone
+        self.model_definition = model_definition
         self.tiling_factor = tiling_factor
 
     def run(self) -> None:
         """Run inference on the point cloud and save results."""
         try:
-            self.progress.emit("Loading / Downloading model, please wait...")
-            self._load_model(self.backbone.lower())
+            model = self._get_model(self.model_definition)
 
             self.progress.emit("Loading point cloud data...")
-            data = self.source.load()
-
-            self.progress.emit("Normalizing scalar fields...")
-            dist_axes, z0 = backend_inference.normalize_scalar_fields(data.dist_axes, data.z0)
+            data = self.source.load(self.model_definition.features)
             original_coord = data.xyz.copy()
 
             self.progress.emit("Preprocessing...")
-            point_features, remap_ids, _ = backend_inference.preprocess(data.xyz, z0, dist_axes, self.grid_size)
+            point_features, remap_ids, _ = backend_inference.preprocess(data, self.grid_size)
 
             self.progress.emit("Running inference...")
             with torch.no_grad():
-                labels = backend_inference.run_inference(self.model, point_features, self.device, self.tiling_factor)[
+                labels = backend_inference.run_inference(model, point_features, self.device, self.tiling_factor)[
                     remap_ids
                 ]
 
@@ -92,24 +90,17 @@ class InferenceWorker(QThread):
         except Exception as e:
             self.error.emit(str(e))
 
-    def _load_model(self, backbone: str = "ptv3") -> None:
+    def _get_model(self, model_definition: ModelDefinition) -> torch.nn.Module:
         """Load the segmentation model (in the device)."""
-
-        # TODO: refactor (duplicated in CLI)
+        self.progress.emit("Loading / Downloading model, please wait...")
         try:
-            if backbone == "ptv3":
-                config = three_d_fos.ptv3v1m1_model.model_config()
-                self.model = three_d_fos.seghead.load(ckpt_path=None, custom_config=config, backbone="ptv3")
-            elif backbone == "litept":
-                config = three_d_fos.liteptv1m1_model.model_config()
-                self.model = three_d_fos.seghead.load(ckpt_path=None, custom_config=config, backbone="litept")
-            else:
-                raise ValueError(f"Unsupported backbone: '{backbone}'. Choose from: ptv3, litept")
+            model = three_d_fos.seghead.load(ckpt_path=None, model_definition=model_definition)
             # Move model to target device immediately
-            self.model.to(self.device).eval()
+            model.to(self.device).eval()
         except Exception as e:
-            self.progress.emit(f"Failed to load model: {e}")
+            self.error.emit(f"Failed to load model: {e}")
         self.progress.emit("Model loaded successfully")
+        return model
 
 
 class MainWidget(QWidget):
@@ -117,13 +108,14 @@ class MainWidget(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("3DFos - Point Cloud Segmentation")
+        self.setWindowTitle(f"3DFos - Point Cloud Segmentation (v{__version__})")
         self.setGeometry(100, 100, 800, 600)
 
         self.device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.worker: InferenceWorker | None = None
         self.current_source: PointCloudSource | None = None
         self.current_destination: PointCloudDestination | None = None
+        self.current_model_deifinition: ModelDefinition = MODEL_MAP[list(MODEL_MAP.keys())[0]]
 
         self._setup_ui()
 
@@ -161,13 +153,14 @@ class MainWidget(QWidget):
         parameters_layout.addWidget(self.device_lbl, 0, 0)
         parameters_layout.addWidget(self.device_in, 0, 1)
 
-        # Backbone
-        self.backbone_lbl = QLabel("Backbone")
-        self.backbone_in = QComboBox()
-        self.backbone_in.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        self.backbone_in.addItems(["PTv3", "LitePT"])
-        parameters_layout.addWidget(self.backbone_lbl, 1, 0)
-        parameters_layout.addWidget(self.backbone_in, 1, 1)
+        # Model definition
+        self.model_lbl = QLabel("Model")
+        self.model_in = QComboBox()
+        self.model_in.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        self.model_in.addItems(list(MODEL_MAP.keys()))
+        self.model_in.currentTextChanged.connect(self._on_model_changed)
+        parameters_layout.addWidget(self.model_lbl, 1, 0)
+        parameters_layout.addWidget(self.model_in, 1, 1)
 
         # Voxel size
         self.grid_size_lbl = QLabel("Voxel size")
@@ -184,8 +177,7 @@ class MainWidget(QWidget):
         self.tiling_factor_lbl = QLabel("Tiling factor")
         self.tiling_factor_in = QLineEdit("0")
         self.tiling_factor_in.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
-        tiling_validator = QDoubleValidator(0, 10, 0)
-        tiling_validator.setLocale(QLocale.c())
+        tiling_validator = QIntValidator(0, 10)
         self.tiling_factor_in.setValidator(tiling_validator)
         parameters_layout.addWidget(self.tiling_factor_lbl, 3, 0)
         parameters_layout.addWidget(self.tiling_factor_in, 3, 1)
@@ -232,6 +224,10 @@ class MainWidget(QWidget):
     def _on_device_changed(self, device_str: str) -> None:
         """Handle device selection."""
         self.device = torch.device(device_str)
+
+    def _on_model_changed(self, model_name_str: str) -> None:
+        """Handle model selection"""
+        self.current_model_deifinition = MODEL_MAP[model_name_str.lower()]
 
     def _on_select_file(self) -> None:
         """Handle file selection."""
@@ -283,7 +279,7 @@ class MainWidget(QWidget):
             destination=self.current_destination,
             device=self.device,
             grid_size=float(self.grid_size_in.text()),
-            backbone=self.backbone_in.currentText(),
+            model_definition=self.current_model_deifinition,
             tiling_factor=int(self.tiling_factor_in.text()),
         )
 
@@ -327,7 +323,7 @@ class ThreeDFosApp:
         self._set_window_icon()
         fos_widget = MainWidget()
         self.window = QMainWindow()
-        self.window.setWindowTitle("3DFos")
+        self.window.setWindowTitle(f"3DFos (v{__version__})")
         self.window.setCentralWidget(fos_widget)
         self.window.setFixedWidth(640)
 

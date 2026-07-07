@@ -18,7 +18,7 @@ from torch.nn.functional import scaled_dot_product_attention
 # In torchsparse / nanotsparse, we change the dataflow for CPU as it's ne only available solution
 from three_d_fos.backend.module import PointModule, PointSequential
 from three_d_fos.backend.structure import Point
-from three_d_fos.backend.utils import do_support_flash_attn, offset2bincount
+from three_d_fos.backend.utils import offset2bincount
 
 
 class PDNorm(PointModule):
@@ -210,10 +210,11 @@ class SerializedAttention(PointModule):
 
         if not self.enable_flash:
             qkv = qkv.view(-1, K, 3, H, C // H)
-            q = qkv[:, :, 0]
-            k = qkv[:, :, 1]
-            v = qkv[:, :, 2]
-            feat = scaled_dot_product_attention(q, k, v, scale=self.scale, dropout_p=0.0).reshape(-1, C)
+            q = qkv[:, :, 0].transpose(1, 2)
+            k = qkv[:, :, 1].transpose(1, 2)
+            v = qkv[:, :, 2].transpose(1, 2)
+            feat = scaled_dot_product_attention(q, k, v, scale=self.scale, dropout_p=0.0)
+            feat = feat.transpose(1, 2).reshape(-1, C)
         else:
             qkv_reshaped = qkv.reshape(-1, 3, H, C // H)
             q = qkv_reshaped[:, 0]
@@ -693,39 +694,3 @@ class PointTransformerV3(PointModule):
         if not self.cls_mode:
             point = self.dec(point)
         return point
-
-
-def model_config():
-    # model settings
-    return dict(
-        in_channels=5,
-        order=["z", "z-trans", "hilbert", "hilbert-trans"],
-        stride=(2, 2, 2, 2),
-        enc_depths=(2, 2, 2, 6, 2),
-        enc_channels=(32, 64, 128, 256, 512),
-        enc_num_head=(2, 4, 8, 16, 32),
-        enc_patch_size=(1024, 1024, 1024, 1024, 1024),
-        dec_depths=(2, 2, 2, 2),
-        dec_channels=(64, 64, 128, 256),
-        dec_num_head=(4, 4, 8, 16),
-        dec_patch_size=(1024, 1024, 1024, 1024),
-        mlp_ratio=4,
-        qkv_bias=True,
-        qk_scale=None,
-        attn_drop=0.0,
-        proj_drop=0.0,
-        drop_path=0.3,  # no-op in eval
-        shuffle_orders=True,
-        pre_norm=True,
-        enable_rpe=False,
-        enable_flash=do_support_flash_attn(),
-        upcast_attention=False,
-        upcast_softmax=False,
-        cls_mode=False,
-        pdnorm_bn=False,
-        pdnorm_ln=False,
-        pdnorm_decouple=True,
-        pdnorm_adaptive=False,
-        pdnorm_affine=True,
-        pdnorm_conditions=("nuScenes", "SemanticKITTI", "Waymo"),
-    )

@@ -2,16 +2,19 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 
+import laspy
 import numpy as np
+from plyfile import PlyData
+
+from three_d_fos.core.feature import Feature
 
 
 @dataclass
 class PointCloudData:
-    """Container for point cloud data with required attributes."""
+    """Container for point cloud data."""
 
     xyz: np.ndarray  # Nx3 array of point coordinates
-    z0: np.ndarray  # N array of elevation values
-    dist_axes: np.ndarray  # N array of distance to axis values
+    features: np.ndarray | None
     source_name: str = ""
 
 
@@ -27,7 +30,7 @@ class PointCloudSource(ABC):
     """Abstract base class for point cloud data sources."""
 
     @abstractmethod
-    def load(self) -> PointCloudData:
+    def load(self, features: frozenset[Feature]) -> PointCloudData:
         """Load and return point cloud data."""
         raise NotImplementedError
 
@@ -46,57 +49,64 @@ class FilePointCloudSource(PointCloudSource):
     def get_name(self) -> str:
         return self.filepath.name
 
-    def load(self) -> PointCloudData:
+    def load(self, features: frozenset[Feature]) -> PointCloudData:
         """Load point cloud from file."""
         suffix = self.filepath.suffix.lower()
 
         if suffix == ".ply":
-            return self._load_ply()
+            return self._load_ply(features)
         elif suffix in (".las", ".laz"):
-            return self._load_las()
+            return self._load_las(features)
         else:
             raise ValueError(f"Unsupported file extension '{suffix}'. Supported: .ply, .las, .laz")
 
-    def _load_ply(self) -> PointCloudData:
+    def _load_ply(self, features: frozenset[Feature]) -> PointCloudData:
         """Load PLY file."""
-        try:
-            from plyfile import PlyData
-        except ImportError:
-            raise ImportError("plyfile is required for PLY support. Install with: pip install plyfile")
 
         with open(self.filepath, "rb") as f:
             cloud = PlyData.read(f)
 
         vertices = cloud["vertex"]
         xyz = np.vstack((vertices["x"], vertices["y"], vertices["z"])).T
-        dist_axes = vertices["scalar_dist_axes"]
-        z0 = vertices["scalar_Z0"]
 
-        if not np.all(np.isfinite(dist_axes)) or not np.all(np.isfinite(z0)):
-            raise ValueError("Inf values detected in scalar fields.")
+        features_array: np.ndarray | None = None
+        feature_list = []
 
-        return PointCloudData(xyz=xyz, z0=z0, dist_axes=dist_axes, source_name=self.get_name())
+        for feat in features:
+            feat_name = "scalar_" + feat.name
+            if feat_name not in vertices:
+                raise ValueError(f"PLY file missing required scalar fields: {feat_name}")
+            feat_data = vertices[feat_name]
+            if not np.all(np.isfinite(feat_data)):
+                raise ValueError(f"Inf values detected in scalar fields ({feat_name})")
+            feature_list.append(feat.normalize(feat_data))
 
-    def _load_las(self) -> PointCloudData:
+        if feature_list:
+            features_array = np.column_stack(feature_list)
+
+        return PointCloudData(xyz=xyz, features=features_array, source_name=self.get_name())
+
+    def _load_las(self, features: frozenset[Feature]) -> PointCloudData:
         """Load LAS/LAZ file."""
-        try:
-            import laspy
-        except ImportError:
-            raise ImportError("laspy is required for LAS/LAZ support. Install with: pip install laspy")
 
         las = laspy.read(self.filepath)
         xyz = np.vstack((las.x, las.y, las.z)).T
 
-        if not hasattr(las, "dist_axes") or not hasattr(las, "Z0"):
-            raise ValueError("LAS file missing required scalar fields: 'dist_axes' and 'Z0'.")
+        features_array: np.ndarray | None = None
+        feature_list = []
 
-        z0 = las.Z0
-        dist_axes = las.dist_axes
+        for feat in features:
+            if not hasattr(las, feat.name):
+                raise ValueError(f"LAS file missing required scalar fields: {feat.name}")
+            feat_data = getattr(las, feat.name)
+            if not np.all(np.isfinite(feat_data)):
+                raise ValueError(f"Inf values detected in scalar fields ({feat.name})")
+            feature_list.append(feat.normalize(feat_data))
 
-        if not np.all(np.isfinite(dist_axes)) or not np.all(np.isfinite(z0)):
-            raise ValueError("Non-finite values detected in scalar fields.")
+        if feature_list:
+            features_array = np.column_stack(feature_list)
 
-        return PointCloudData(xyz=xyz, z0=z0, dist_axes=dist_axes, source_name=self.get_name())
+        return PointCloudData(xyz, features_array, self.get_name())
 
 
 class PointCloudDestination(ABC):

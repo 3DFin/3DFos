@@ -5,16 +5,13 @@ from typing import Any
 import torch
 from torch import nn
 
-from three_d_fos.backend.liteptv1m1_model import LitePT
-from three_d_fos.backend.ptv3v1m1_model import PointTransformerV3
 from three_d_fos.backend.structure import Point
+from three_d_fos.core.model import PTV3_FULL_MODEL, ModelDefinition
 
 logger = logging.getLogger(__name__)
 
 # Model constants
 NUM_CLASSES = 4
-PTV3_OUT_CHANNELS = 64
-LITEPT_OUT_CHANNELS = 72
 
 
 class SegmentationHeadV2(nn.Module):
@@ -37,57 +34,44 @@ class SegmentationHeadV2(nn.Module):
         return dict(seg_logits=seg_logits)
 
 
-def try_load_model(ckpt_path: Path | None = None, backbone: str = "ptv3") -> dict[str, Any]:
+def try_load_model(ckpt_path: Path | None, url: str | None) -> dict[str, Any]:
     """Load model checkpoint from local path or download from Github releases (torch.hub mechanism)."""
     if ckpt_path and ckpt_path.is_file():
         logger.info("Loading checkpoint from local path: %s", ckpt_path)
         ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
+    elif url:
+        logger.info("Using torch.hub model at %s", url)
+        ckpt = torch.hub.load_state_dict_from_url(url, map_location="cpu")
     else:
-        model_url = f"https://github.com/3DFin/3DFos/releases/download/v0.1.0/{backbone}_3dfos_005.pth"
-        logger.info("Using torch.hub model at %s", model_url)
-        ckpt = torch.hub.load_state_dict_from_url(model_url, map_location="cpu")
+        raise RuntimeError("Unable to load model")
     return ckpt
 
 
 def load(
     ckpt_path: Path | None = None,
-    custom_config: dict | None = None,
-    backbone: str = "ptv3",
+    model_definition: ModelDefinition = PTV3_FULL_MODEL,
 ) -> nn.Module:
-    backbone_lower = backbone.lower()
-    if backbone_lower == "ptv3":
-        model = SegmentationHeadV2(
-            num_classes=NUM_CLASSES,
-            backbone_out_channels=PTV3_OUT_CHANNELS,
-            backbone=PointTransformerV3(**custom_config),
-        )
-    elif backbone_lower == "litept":
-        model = SegmentationHeadV2(
-            num_classes=NUM_CLASSES,
-            backbone_out_channels=LITEPT_OUT_CHANNELS,
-            backbone=LitePT(**custom_config),
-        )
-    else:
-        raise ValueError(f"Unsupported backbone: '{backbone}'. Choose from: ptv3, litept")
+    model = SegmentationHeadV2(
+        num_classes=NUM_CLASSES,
+        backbone_out_channels=model_definition.output_features,
+        backbone=model_definition.model_instance,
+    )
 
-    ckpt = try_load_model(ckpt_path, backbone_lower)
+    ckpt = try_load_model(ckpt_path, model_definition.url)
 
     torchsparse_statedict: dict[str, Any] = {}
 
     # State dict remapping for torchsparse++ / nanoTSparse
     # Both PTV3 and LitePT use sparse convolutions that need weight remapping
     # Weights have different names and shape, bias is ok.
-    if backbone_lower in ("ptv3", "litept"):
-        logger.info("%s state dict remapping for Torchsparse++ / [nano]TS", backbone.upper())
-        for k, v in ckpt["state_dict"].items():
-            if "cpe.0.weight" in k or "conv.weight" in k or "conv.0.weight" in k:
-                v = v.permute(3, 2, 1, 4, 0)
-                v = v.reshape(-1, v.shape[3], v.shape[4])
-                k = k.replace("weight", "kernel")
-            torchsparse_statedict[k] = v
-        model.load_state_dict(torchsparse_statedict)
-    else:
-        model.load_state_dict(ckpt["state_dict"])
+    logger.info("%s state dict remapping for Torchsparse++ / [nano]TS", model_definition.name)
+    for k, v in ckpt["state_dict"].items():
+        if "cpe.0.weight" in k or "conv.weight" in k or "conv.0.weight" in k:
+            v = v.permute(3, 2, 1, 4, 0)
+            v = v.reshape(-1, v.shape[3], v.shape[4])
+            k = k.replace("weight", "kernel")
+        torchsparse_statedict[k] = v
+    model.load_state_dict(torchsparse_statedict)
 
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info("Model params: %.2fM", n_parameters / 1e6)

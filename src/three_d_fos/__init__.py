@@ -4,12 +4,13 @@
 Main package for 3D forestry segmentation.
 """
 
+# Import version
+from three_d_fos.__version__ import __version__
+
 # Re-export backend modules for backward compatibility
 from three_d_fos.backend import (
-    inference,
-    liteptv1m1_model,
+    model,
     module,
-    ptv3v1m1_model,
     registry,
     seghead,
     structure,
@@ -18,10 +19,9 @@ from three_d_fos.backend import (
 )
 
 __all__ = [
-    "inference",
-    "liteptv1m1_model",
+    "__version__",
+    "model",
     "module",
-    "ptv3v1m1_model",
     "registry",
     "seghead",
     "structure",

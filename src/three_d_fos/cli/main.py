@@ -6,8 +6,9 @@ from pathlib import Path
 import torch
 
 import three_d_fos
-from three_d_fos.backend import inference as backend_inference
 from three_d_fos.cli.logging import setup_logging
+from three_d_fos.core import inference as backend_inference
+from three_d_fos.core.model import MODEL_MAP
 from three_d_fos.io import FilePointCloudDestination, FilePointCloudSource, SegmentationResult
 
 logger = logging.getLogger(__name__)
@@ -16,6 +17,7 @@ setup_logging()
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="3D Point Cloud Segmentation for forestry applications.")
+    parser.add_argument("--version", action="version", version=f"3DFos v{three_d_fos.__version__}")
     parser.add_argument("input_path", type=Path, help="Path to the input PLY or LAS file")
     parser.add_argument("--model_path", type=Path, help="Path to the model file (.pth)")
     parser.add_argument(
@@ -29,11 +31,11 @@ def main() -> None:
         "--tiling_factor", type=int, default=0, help="Number of tiles. Total number of tiles is 2^tiling_factor"
     )
     parser.add_argument(
-        "--backbone",
+        "--model",
         type=str,
-        choices=["ptv3", "litept"],
-        default="ptv3",
-        help="Choose backbone: ptv3 or litept",
+        choices=list(MODEL_MAP.keys()),
+        default="ptv3_full",
+        help=f"Choose model: {','.join(MODEL_MAP.keys())} ",
     )
 
     parser.add_argument(
@@ -41,7 +43,7 @@ def main() -> None:
         type=str,
         choices=["cuda", "cpu"] if torch.cuda.is_available() else ["cpu"],
         default="cuda" if torch.cuda.is_available() else "cpu",
-        help="Choose backbone: ptv3 or litept",
+        help="Choose device that host the computation",
     )
 
     args = parser.parse_args()
@@ -57,14 +59,8 @@ def main() -> None:
     start_total = time.time()
 
     start_model = time.time()
-    if args.backbone == "ptv3":
-        config = three_d_fos.ptv3v1m1_model.model_config()
-        model = three_d_fos.seghead.load(ckpt_path=args.model_path, custom_config=config, backbone="ptv3")
-    elif args.backbone == "litept":
-        config = three_d_fos.liteptv1m1_model.model_config()
-        model = three_d_fos.seghead.load(ckpt_path=args.model_path, custom_config=config, backbone="litept")
-    else:
-        raise ValueError(f"Unsupported backbone: '{args.backbone}'. Choose from: ptv3, litept")
+    model_definition = MODEL_MAP[args.model]
+    model = three_d_fos.seghead.load(ckpt_path=args.model_path, model_definition=model_definition)
 
     model.to(device).eval()
     logger.info("Model loaded in %.2f seconds.", time.time() - start_model)
@@ -73,16 +69,14 @@ def main() -> None:
     logger.info("Loading data from %s...", args.input_path)
 
     source = FilePointCloudSource(args.input_path)
-    data = source.load()
-
-    dist_axes, z0 = backend_inference.normalize_scalar_fields(data.dist_axes, data.z0)
+    data = source.load(model_definition.features)
     original_coord = data.xyz.copy()
 
     logger.info("Data loaded in %.2f seconds.", time.time() - start_data)
 
     start_preproc = time.time()
     logger.info("Running Preprocessing...")
-    point_features, remap_ids, _ = backend_inference.preprocess(data.xyz, z0, dist_axes, args.grid_size)
+    point_features, remap_ids, _ = backend_inference.preprocess(data, args.grid_size)
     logger.info("Preprocessing done in %.2f seconds.", time.time() - start_preproc)
 
     start_infer = time.time()
