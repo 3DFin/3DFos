@@ -23,8 +23,8 @@ class ModelDefinition:
     additional_features: list[Feature] = field(default_factory=list)
 
     @property
-    def features(self) -> frozenset[Feature]:
-        return frozenset(self.additional_features)
+    def features(self) -> list[Feature]:
+        return self.additional_features
 
     @property
     def feature_size(self) -> int:

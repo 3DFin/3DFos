@@ -30,7 +30,7 @@ class PointCloudSource(ABC):
     """Abstract base class for point cloud data sources."""
 
     @abstractmethod
-    def load(self, features: frozenset[Feature]) -> PointCloudData:
+    def load(self, features: list[Feature]) -> PointCloudData:
         """Load and return point cloud data."""
         raise NotImplementedError
 
@@ -49,7 +49,7 @@ class FilePointCloudSource(PointCloudSource):
     def get_name(self) -> str:
         return self.filepath.name
 
-    def load(self, features: frozenset[Feature]) -> PointCloudData:
+    def load(self, features: list[Feature]) -> PointCloudData:
         """Load point cloud from file."""
         suffix = self.filepath.suffix.lower()
 
@@ -60,7 +60,7 @@ class FilePointCloudSource(PointCloudSource):
         else:
             raise ValueError(f"Unsupported file extension '{suffix}'. Supported: .ply, .las, .laz")
 
-    def _load_ply(self, features: frozenset[Feature]) -> PointCloudData:
+    def _load_ply(self, features: list[Feature]) -> PointCloudData:
         """Load PLY file."""
 
         with open(self.filepath, "rb") as f:
@@ -86,7 +86,7 @@ class FilePointCloudSource(PointCloudSource):
 
         return PointCloudData(xyz=xyz, features=features_array, source_name=self.get_name())
 
-    def _load_las(self, features: frozenset[Feature]) -> PointCloudData:
+    def _load_las(self, features: list[Feature]) -> PointCloudData:
         """Load LAS/LAZ file."""
 
         las = laspy.read(self.filepath)
