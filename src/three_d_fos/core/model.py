@@ -20,11 +20,11 @@ class ModelDefinition:
     url: str | None
     output_features: int
     config: dict = field(default_factory=dict)
-    additional_features: set[Feature] = field(default_factory=set)
+    additional_features: list[Feature] = field(default_factory=list)
 
     @property
-    def features(self) -> frozenset[Feature]:
-        return frozenset(self.additional_features)
+    def features(self) -> list[Feature]:
+        return self.additional_features
 
     @property
     def feature_size(self) -> int:
@@ -132,7 +132,7 @@ PTV3_FULL_MODEL = ModelDefinition(
     backbone=PointTransformerV3,
     url="https://github.com/3DFin/3DFos/releases/download/v0.1.0/ptv3_3dfos_005.pth",
     output_features=PTV3_OUT_CHANNELS,
-    additional_features={Z0, DIST_AXES},
+    additional_features=[Z0, DIST_AXES],
     config=BASE_PTV3_CONFIG,
 )
 
@@ -141,7 +141,7 @@ LITEPT_FULL_MODEL = ModelDefinition(
     backbone=LitePT,
     url="https://github.com/3DFin/3DFos/releases/download/v0.1.0/litept_3dfos_005.pth",
     output_features=LITEPT_OUT_CHANNELS,
-    additional_features={Z0, DIST_AXES},
+    additional_features=[Z0, DIST_AXES],
     config=BASE_LITEPT_CONFIG,
 )
 
@@ -150,7 +150,7 @@ LITEPT_NORMALS_Z0_MODEL = ModelDefinition(
     backbone=LitePT,
     url="https://github.com/3DFin/3DFos/releases/download/v0.2.0a1/litept_3dfos_normals_z0_005.pth",
     output_features=LITEPT_OUT_CHANNELS,
-    additional_features={Z0},
+    additional_features=[Z0],
     config=BASE_LITEPT_CONFIG,
 )
 

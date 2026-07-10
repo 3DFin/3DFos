@@ -26,7 +26,7 @@ class CloudComparePointCloudSource(PointCloudSource):
         """Return the point cloud name."""
         return self._name
 
-    def load(self, features: frozenset[Feature]) -> PointCloudData:
+    def load(self, features: list[Feature]) -> PointCloudData:
         """Load point cloud data from CloudCompare."""
 
         # Get coordinates
