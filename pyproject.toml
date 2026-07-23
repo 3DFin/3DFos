@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "3DFos"
-version = "0.2.0rc3"
+version = "0.2.0"
 description = "Forestry Inference based on PointCept models"
 requires-python = ">=3.12.0,<3.14.0"
 readme = "README.md"
@@ -51,7 +51,7 @@ module-name = "three_d_fos"
 
 [tool.uv]
 no-build-isolation-package = ["nanotsparse"]
-conflicts = [[{ extra = "cpu" }, { extra = "cu130" }, { extra = "cu128" }], [{extra ="cpu"}, {extra="nanotsparsecuda"}]]
+conflicts = [[{ extra = "cpu" }, { extra = "cu130" }, { extra = "cu128" }], [{extra ="cpu"}, {extra="nanotsparsecuda"}],  [{extra ="gui"}, {extra="windowsplugin"}] ]
 dependency-metadata = [
     { name = "nanotsparse", version = "2.2.3", requires-dist = ["torch", "setuptools", "ninja"] },
 ]
