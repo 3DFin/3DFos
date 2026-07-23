@@ -42,6 +42,9 @@ cu128 = [
 gui = [
     "pyside6>=6.8.1",
 ]
+windowsplugin = [
+    "pyside6~=6.8.1",
+]
 
 [tool.uv.build-backend]
 module-name = "three_d_fos"
@@ -55,12 +58,12 @@ dependency-metadata = [
 
 [tool.uv.sources]
 torch = [
-    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cpu", extra = "cpu", marker = "sys_platform == 'linux'" },
     { index = "pytorch-cu130", extra = "cu130", marker = "sys_platform == 'win32' or sys_platform == 'linux'" },
     { index = "pytorch-cu128", extra = "cu128", marker = "sys_platform == 'win32' or sys_platform == 'linux'" },
 ]
 torchvision = [
-    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cpu", extra = "cpu", marker = "sys_platform == 'linux'" },
     { index = "pytorch-cu130", extra = "cu130", marker = "sys_platform == 'win32' or sys_platform == 'linux'" },
     { index = "pytorch-cu128", extra = "cu128", marker = "sys_platform == 'win32' or sys_platform == 'linux'" },
 ]
