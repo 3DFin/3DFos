@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "3DFos"
-version = "0.2.0rc3"
+version = "0.2.0"
 description = "Forestry Inference based on PointCept models"
 requires-python = ">=3.12.0,<3.14.0"
 readme = "README.md"
@@ -42,25 +42,28 @@ cu128 = [
 gui = [
     "pyside6>=6.8.1",
 ]
+windowsplugin = [
+    "pyside6~=6.8.1",
+]
 
 [tool.uv.build-backend]
 module-name = "three_d_fos"
 
 [tool.uv]
 no-build-isolation-package = ["nanotsparse"]
-conflicts = [[{ extra = "cpu" }, { extra = "cu130" }, { extra = "cu128" }], [{extra ="cpu"}, {extra="nanotsparsecuda"}]]
+conflicts = [[{ extra = "cpu" }, { extra = "cu130" }, { extra = "cu128" }], [{extra ="cpu"}, {extra="nanotsparsecuda"}],  [{extra ="gui"}, {extra="windowsplugin"}] ]
 dependency-metadata = [
     { name = "nanotsparse", version = "2.2.3", requires-dist = ["torch", "setuptools", "ninja"] },
 ]
 
 [tool.uv.sources]
 torch = [
-    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cpu", extra = "cpu", marker = "sys_platform == 'linux'" },
     { index = "pytorch-cu130", extra = "cu130", marker = "sys_platform == 'win32' or sys_platform == 'linux'" },
     { index = "pytorch-cu128", extra = "cu128", marker = "sys_platform == 'win32' or sys_platform == 'linux'" },
 ]
 torchvision = [
-    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cpu", extra = "cpu", marker = "sys_platform == 'linux'" },
     { index = "pytorch-cu130", extra = "cu130", marker = "sys_platform == 'win32' or sys_platform == 'linux'" },
     { index = "pytorch-cu128", extra = "cu128", marker = "sys_platform == 'win32' or sys_platform == 'linux'" },
 ]
